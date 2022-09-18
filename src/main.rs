@@ -4,22 +4,6 @@ mod vecgen;
 use ocl::ProQue;
 use ocl_stream::OCLStreamExecutor;
 
-fn dotproduct(veca: &Vec<f64>, vecb: &Vec<f64>) -> f64 {
-    veca.iter().zip(vecb.iter()).map(|(x, y)| x * y).sum()
-}
-
-fn l2_norm(vec: &Vec<f64>) -> f64 {
-    match f64::sqrt(vec.iter().map(|x| x * x).sum()) {
-        0.0 => 1.0,
-        x => x,
-    }
-}
-
-fn normalize(vec: Vec<f64>) -> Vec<f64> {
-    let inv_norm = 1.0 / l2_norm(&vec);
-    vec.iter().map(|x| x * inv_norm).collect()
-}
-
 fn main() {
     // create the ProQue
     let pro_que = ProQue::builder()
@@ -91,14 +75,8 @@ fn main() {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use approx::assert_relative_eq;
-
     #[test]
-    fn norm_works() {
-        let normalized = normalize(vec![1.0, 1.0, 0.0]);
-        assert_relative_eq!(normalized[0], 0.5 * f64::sqrt(2.0), epsilon = 1e-5);
-        assert_relative_eq!(normalized[1], 0.5 * f64::sqrt(2.0), epsilon = 1e-5);
-        assert_eq!(normalized[2], 0.0);
+    fn it_works() {
+        assert!(true);
     }
 }
