@@ -10,6 +10,12 @@ pub trait Normalize: L2Norm {
     fn normalize_into<D: AsMut<[Self::Output]>>(&self, dest: D);
 }
 
+pub trait DotProduct {
+    type Output;
+
+    fn dot_product<O: AsRef<[Self::Output]>>(&self, other: O) -> Self::Output;
+}
+
 impl<T> L2Norm for T
 where
     T: AsRef<[f32]>,
@@ -21,10 +27,14 @@ where
     }
 
     fn l2_norm(&self) -> Self::Output {
-        match self.l2_norm_sq() {
-            0.0 => 1.0,
-            x => f32::sqrt(x),
+        let norm_sq = self.l2_norm_sq();
+
+        // We accept this because a multiplication with zero should result in zero always.
+        if norm_sq == 0.0 {
+            return 1.0;
         }
+
+        f32::sqrt(norm_sq)
     }
 }
 
@@ -44,6 +54,21 @@ where
         for (x, y) in self.as_ref().iter().zip(dest.as_mut().iter_mut()) {
             *y = x * inv_norm;
         }
+    }
+}
+
+impl<T> DotProduct for T
+where
+    T: AsRef<[f32]>,
+{
+    type Output = f32;
+
+    fn dot_product<O: AsRef<[Self::Output]>>(&self, other: O) -> Self::Output {
+        self.as_ref()
+            .iter()
+            .zip(other.as_ref().iter())
+            .map(|(x, y)| x * y)
+            .sum()
     }
 }
 
@@ -87,5 +112,17 @@ mod test {
         assert_relative_eq!(normalized[0], 0.5 * f32::sqrt(2.0), epsilon = 1e-5);
         assert_relative_eq!(normalized[1], 0.5 * f32::sqrt(2.0), epsilon = 1e-5);
         assert_eq!(normalized[2], 0.0);
+    }
+
+    #[test]
+    fn dot_product_works() {
+        let lhs = vec![0.5, 2.0, 0.0];
+        let rhs = vec![0.1, 1.0, 1.0];
+        let dot_product = lhs.dot_product(rhs);
+        assert_relative_eq!(
+            dot_product,
+            0.5 * 0.1 + 2.0 * 1.0 + 0.0 * 1.0,
+            epsilon = 0.0
+        );
     }
 }
