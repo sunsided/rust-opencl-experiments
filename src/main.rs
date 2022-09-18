@@ -1,8 +1,8 @@
+mod vecgen;
+mod vec_traits;
+
 use ocl::ProQue;
 use ocl_stream::OCLStreamExecutor;
-
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
 
 fn dotproduct(veca: &Vec<f64>, vecb: &Vec<f64>) -> f64 {
     veca.iter().zip(vecb.iter()).map(|(x, y)| x * y).sum()
@@ -11,7 +11,7 @@ fn dotproduct(veca: &Vec<f64>, vecb: &Vec<f64>) -> f64 {
 fn l2_norm(vec: &Vec<f64>) -> f64 {
     match f64::sqrt(vec.iter().map(|x| x * x).sum()) {
         0.0 => 1.0,
-        x => x
+        x => x,
     }
 }
 
@@ -92,13 +92,13 @@ fn main() {
 #[cfg(test)]
 mod test {
     use super::*;
-    use approx::relative_eq;
+    use approx::assert_relative_eq;
 
     #[test]
     fn norm_works() {
         let normalized = normalize(vec![1.0, 1.0, 0.0]);
-        relative_eq!(normalized[0], 0.5*f64::sqrt(2.0), epsilon = 1e-5);
-        relative_eq!(normalized[1], 0.5*f64::sqrt(2.0), epsilon = 1e-5);
+        assert_relative_eq!(normalized[0], 0.5 * f64::sqrt(2.0), epsilon = 1e-5);
+        assert_relative_eq!(normalized[1], 0.5 * f64::sqrt(2.0), epsilon = 1e-5);
         assert_eq!(normalized[2], 0.0);
     }
 }
