@@ -1,3 +1,4 @@
 /target
 /.idea
-sccache.log
+*.log
+*.bin
