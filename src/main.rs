@@ -1,5 +1,5 @@
-mod vecgen;
 mod vec_traits;
+mod vecgen;
 
 use ocl::ProQue;
 use ocl_stream::OCLStreamExecutor;
