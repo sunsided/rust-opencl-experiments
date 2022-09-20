@@ -1,9 +1,7 @@
 use fmmap::tokio::{AsyncMmapFileMut, AsyncMmapFileMutExt, AsyncOptions};
-use fmmap::{MmapFileMut, MmapFileMutExt, MmapFileWriterExt, Options};
 use futures::TryStreamExt;
-use indicatif::ProgressBar;
-use sqlx::mysql::{MySqlConnectOptions, MySqlPoolOptions};
-use sqlx::{Executor, MySql, Row, Transaction};
+use indicatif::{ProgressBar, ProgressStyle};
+use sqlx::{mysql::MySqlPoolOptions, MySql, Row, Transaction};
 use std::env;
 use std::path::PathBuf;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -11,6 +9,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
     const LIMIT: usize = 1_000_000;
+    const HEADER_SIZE: usize = 16;
 
     let connection_string = env::var("DB_CONNECTION_STRING")
         .expect("DB_CONNECTION_STRING environment variable was not set; expected `mysql://root:password@localhost/db`");
@@ -23,6 +22,9 @@ async fn main() -> Result<(), sqlx::Error> {
     let num_dimensions = get_num_floats(&table, &mut tx).await?;
 
     let pb = ProgressBar::new(num_vectors as u64);
+    pb.set_style(ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})")
+        .unwrap()
+        .progress_chars("#>-"));
 
     let path = PathBuf::from("vectors.bin");
     let options = AsyncOptions::new()
@@ -30,8 +32,8 @@ async fn main() -> Result<(), sqlx::Error> {
         .write(true)
         .create(true)
         .truncate(true)
-        .max_size((num_vectors * 4 * num_dimensions) as u64)
-        .len(num_vectors * 4 * num_dimensions);
+        .max_size((num_vectors * 4 * num_dimensions + HEADER_SIZE) as u64)
+        .len(num_vectors * 4 * num_dimensions + HEADER_SIZE);
 
     let mut mmap = AsyncMmapFileMut::open_with_options(path, options)
         .await
