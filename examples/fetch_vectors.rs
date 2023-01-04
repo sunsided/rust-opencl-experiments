@@ -11,6 +11,8 @@ async fn main() -> Result<(), sqlx::Error> {
     const LIMIT: usize = 1_000_000;
     const HEADER_SIZE: usize = 16;
 
+    dotenvy::dotenv().ok();
+
     let connection_string = env::var("DB_CONNECTION_STRING")
         .expect("DB_CONNECTION_STRING environment variable was not set; expected `mysql://root:password@localhost/db`");
     let table = env::var("DB_TABLE").expect("DB_TABLE environment variable was not set");
