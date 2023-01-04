@@ -6,7 +6,7 @@ A binary vector database format is added to provide basic testing data.
 The format of `vectors.bin` is
 
 | Length | Content              | Example Value |
-|--------|----------------------|–--------------|
+|--------|----------------------|---------------|
 | 4      | Version              | 0             |
 | 4      | `u32::MAX`           | unused        |
 | 4      | Number of vectors    | 1000000       |
