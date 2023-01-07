@@ -1,17 +1,15 @@
-use fmmap::tokio::{AsyncMmapFileMut, AsyncMmapFileMutExt, AsyncOptions};
 use futures::TryStreamExt;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use sqlx::{mysql::MySqlPoolOptions, MySql, Row, Transaction};
 use std::env;
 use std::path::PathBuf;
-use tokio::io;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncReadExt;
 use tokio::task::JoinHandle;
+use vecdb::VecDb;
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
     const LIMIT: usize = 1_000_000;
-    const HEADER_SIZE: usize = 16;
 
     dotenvy::dotenv().ok();
 
@@ -47,40 +45,19 @@ async fn main() -> Result<(), sqlx::Error> {
     let pb_r = mp.add(pb_r);
     let pb_w = mp.add(pb_w);
 
-    let path = PathBuf::from("../../vectors.bin");
-
-    let options = AsyncOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .max_size((num_vectors * 4 * num_dimensions + HEADER_SIZE) as u64)
-        .len(num_vectors * 4 * num_dimensions + HEADER_SIZE);
-
-    let mut mmap = AsyncMmapFileMut::open_with_options(path, options)
-        .await
-        .unwrap();
-
     let (sender, mut recv) = tokio::sync::mpsc::unbounded_channel();
 
-    let write: JoinHandle<io::Result<()>> = tokio::spawn(async move {
-        let mut writer = mmap.writer(0).unwrap();
-
-        writer.write_u32(0).await.unwrap(); // version
-        writer.write_u32(u32::MAX).await.unwrap(); // padding
-        writer.write_u32(num_vectors as u32).await.unwrap();
-        writer.write_u32(num_dimensions as u32).await.unwrap();
-        writer.flush().await?;
+    let write: JoinHandle<anyhow::Result<()>> = tokio::spawn(async move {
+        let path = PathBuf::from("vectors.bin");
+        let mut db = VecDb::open_write(path, num_vectors.into(), num_dimensions.into()).await?;
 
         while let Some(vec) = recv.recv().await {
-            for float in vec {
-                writer.write_f32(float).await?;
-            }
+            db.write_vec(vec).await?;
 
             pb_w.inc(1);
         }
 
-        writer.flush().await?;
+        db.flush()?;
         pb_w.finish_and_clear();
         Ok(())
     });

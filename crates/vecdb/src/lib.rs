@@ -1,7 +1,7 @@
+use fmmap::tokio::{AsyncMmapFileExt, AsyncMmapFileMut, AsyncMmapFileMutExt, AsyncOptions};
 use std::borrow::Borrow;
 use std::ops::Deref;
 use std::path::PathBuf;
-use fmmap::tokio::{AsyncMmapFileExt, AsyncMmapFileMut, AsyncMmapFileMutExt, AsyncMmapFileWriter, AsyncOptions};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 /// Vector Database File
@@ -9,7 +9,7 @@ pub struct VecDb {
     mmap: AsyncMmapFileMut,
     pub num_vectors: NumVectors,
     pub num_dimensions: NumDimensions,
-    pos: usize
+    pos: usize,
 }
 
 #[derive(Default, Debug, Copy, Clone)]
@@ -21,7 +21,11 @@ pub struct NumDimensions(usize);
 impl VecDb {
     const HEADER_SIZE: usize = 16;
 
-    pub async fn open_write<B: Borrow<PathBuf>>(path: B, num_vectors: NumVectors, num_dimensions: NumDimensions) -> Result<VecDb, fmmap::error::Error> {
+    pub async fn open_write<B: Borrow<PathBuf>>(
+        path: B,
+        num_vectors: NumVectors,
+        num_dimensions: NumDimensions,
+    ) -> Result<VecDb, fmmap::error::Error> {
         let options = AsyncOptions::new()
             .read(true)
             .write(true)
@@ -42,7 +46,7 @@ impl VecDb {
             mmap,
             num_vectors,
             num_dimensions,
-            pos: Self::HEADER_SIZE
+            pos: Self::HEADER_SIZE,
         })
     }
 
@@ -65,14 +69,14 @@ impl VecDb {
             mmap,
             num_vectors: num_vectors.into(),
             num_dimensions: num_dimensions.into(),
-            pos: Self::HEADER_SIZE
+            pos: Self::HEADER_SIZE,
         })
     }
 
-    pub async fn write_vec<V: AsRef<[f32]>>(&mut self, vec: V) -> Result<(), fmmap::error::Error> {
+    pub async fn write_vec<V: AsRef<[f32]>>(&mut self, vec: V) -> Result<(), std::io::Error> {
         let vec = vec.as_ref();
         assert_eq!(vec.len(), self.num_dimensions.0);
-        let mut writer = self.mmap.writer(self.pos)?;
+        let mut writer = self.mmap.writer(self.pos).unwrap(); // TODO: Fix
         for float in vec {
             writer.write_f32(*float).await?;
         }
@@ -80,11 +84,14 @@ impl VecDb {
         Ok(())
     }
 
-    pub async fn read_vec_into<V: AsMut<[f32]>>(&mut self, mut vec: V) -> Result<(), fmmap::error::Error> {
+    pub async fn read_vec_into<V: AsMut<[f32]>>(
+        &mut self,
+        mut vec: V,
+    ) -> Result<(), fmmap::error::Error> {
         let vec = vec.as_mut();
         assert_eq!(vec.len(), self.num_dimensions.0);
         let mut reader = self.mmap.reader(self.pos)?;
-        for i in  0..self.num_dimensions.0 {
+        for i in 0..self.num_dimensions.0 {
             vec[i] = reader.read_f32().await?;
         }
         self.pos += self.vec_stride();
@@ -94,14 +101,17 @@ impl VecDb {
     pub async fn read_vec(&mut self) -> Result<Vec<f32>, fmmap::error::Error> {
         let mut reader = self.mmap.reader(self.pos)?;
         let mut vec = Vec::with_capacity(self.num_dimensions.0);
-        for _ in  0..self.num_dimensions.0 {
+        for _ in 0..self.num_dimensions.0 {
             vec.push(reader.read_f32().await?);
         }
         self.pos += self.vec_stride();
         Ok(vec)
     }
 
-    pub async fn read_all_vecs<F: FnMut(usize, Vec<f32>) -> ()>(&mut self, mut action: F) -> Result<(), fmmap::error::Error> {
+    pub async fn read_all_vecs<F: FnMut(usize, Vec<f32>) -> ()>(
+        &mut self,
+        mut action: F,
+    ) -> Result<(), fmmap::error::Error> {
         let mut reader = self.mmap.reader(self.pos)?;
         for v in 0..self.num_vectors.0 {
             let mut vec = Vec::with_capacity(self.num_dimensions.0);
