@@ -16,26 +16,42 @@ async fn main() {
     let start = Instant::now();
 
     let num_vecs = *db.num_vectors;
+    let num_dims = *db.num_dimensions;
     let mut vecs = Vec::with_capacity(num_vecs);
 
-    db.read_all_vecs(|v, vec| {
-        let duration = Instant::now() - start;
-        println!(
-            "Reading {v} / {num_vecs} ({} vecs/s)",
-            vecs.len() as f32 / duration.as_secs_f32()
-        );
+    let sample_size = num_vecs.min(1000);
+    let mut chunk = vec![0.0; sample_size * num_dims];
 
-        #[cfg(debug_assertions)]
-        let norm = vec.iter().fold(0.0f32, |prev, x| prev + x * x).sqrt();
-        debug_assert!((norm - 1.0f32).abs() < 0.001f32, "Denormal vector detected");
-        vecs.push(vec);
-        true
-    })
-    .await
-    .unwrap();
+    let num_read = db
+        .read_all_vecs(|v, vec| {
+            debug_assert_eq!(vec.len(), num_dims);
+
+            let duration = Instant::now() - start;
+            println!(
+                "Reading {v} / {num_vecs} ({} vecs/s)",
+                vecs.len() as f32 / duration.as_secs_f32()
+            );
+
+            #[cfg(debug_assertions)]
+            let norm = vec.iter().fold(0.0f32, |prev, x| prev + x * x).sqrt();
+            debug_assert!((norm - 1.0f32).abs() < 0.001f32, "Denormal vector detected");
+            vecs.push(Vec::from(vec));
+
+            let start = v * num_dims;
+            let end = start + num_dims;
+            chunk[start..end].copy_from_slice(vec);
+
+            // Early exit :)
+            v < sample_size - 1
+        })
+        .await
+        .unwrap();
 
     let duration = Instant::now() - start;
-    println!("Loading duration: {} s", duration.as_secs_f32());
+    println!(
+        "Loading duration {} s for {num_read} vectors",
+        duration.as_secs_f32()
+    );
 
     // create the ProQue
     let pro_que = ProQue::builder()
