@@ -1,40 +1,38 @@
 mod vec_traits;
 mod vecgen;
 
-use std::path::PathBuf;
-use std::time::Instant;
 use ocl::ProQue;
 use ocl_stream::OCLStreamExecutor;
+use std::path::PathBuf;
+use std::time::Instant;
 use vecdb::VecDb;
 
 #[tokio::main]
 async fn main() {
-    let mut db = VecDb::open_read(PathBuf::from("vectors.bin")).await.unwrap();
+    let mut db = VecDb::open_read(PathBuf::from("vectors.bin"))
+        .await
+        .unwrap();
 
     let start = Instant::now();
 
     let num_vecs = *db.num_vectors;
     let mut vecs = Vec::with_capacity(num_vecs);
 
-    /*
     db.read_all_vecs(|v, vec| {
         let duration = Instant::now() - start;
-        println!("Reading {v} / {num_vecs} ({} vecs/s)", vecs.len() as f32 / duration.as_secs_f32());
-
-        vecs.push(vec);
-    }).await.unwrap();
-    */
-
-    for v in 0..*db.num_vectors {
-        let duration = Instant::now() - start;
-        println!("Reading {v} / {num_vecs} ({} vecs/s)", vecs.len() as f32 / duration.as_secs_f32());
-        let vec = db.read_vec().await.unwrap();
+        println!(
+            "Reading {v} / {num_vecs} ({} vecs/s)",
+            vecs.len() as f32 / duration.as_secs_f32()
+        );
 
         #[cfg(debug_assertions)]
         let norm = vec.iter().fold(0.0f32, |prev, x| prev + x * x).sqrt();
         debug_assert!((norm - 1.0f32).abs() < 0.001f32, "Denormal vector detected");
         vecs.push(vec);
-    }
+        true
+    })
+    .await
+    .unwrap();
 
     let duration = Instant::now() - start;
     println!("Loading duration: {} s", duration.as_secs_f32());
