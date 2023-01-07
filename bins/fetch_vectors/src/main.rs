@@ -26,14 +26,22 @@ async fn main() -> Result<(), sqlx::Error> {
     let num_dimensions = get_num_floats(&table, &mut tx).await?;
 
     let pb_r = ProgressBar::new(num_vectors as u64);
-    pb_r.set_style(ProgressStyle::with_template("{spinner:.green} Fetch {pos}/{len} {elapsed_precise} [{wide_bar:.cyan/blue}] {eta}")
+    pb_r.set_style(
+        ProgressStyle::with_template(
+            "{spinner:.green} Fetch {pos}/{len} {elapsed_precise} [{wide_bar:.cyan/blue}] {eta}",
+        )
         .unwrap()
-        .progress_chars("#>-"));
+        .progress_chars("#>-"),
+    );
 
     let pb_w = ProgressBar::new(num_vectors as u64);
-    pb_w.set_style(ProgressStyle::with_template("{spinner:.green} Store {pos}/{len} {elapsed_precise} [{wide_bar:.cyan/blue}] {eta}")
+    pb_w.set_style(
+        ProgressStyle::with_template(
+            "{spinner:.green} Store {pos}/{len} {elapsed_precise} [{wide_bar:.cyan/blue}] {eta}",
+        )
         .unwrap()
-        .progress_chars("#>-"));
+        .progress_chars("#>-"),
+    );
 
     let mp = MultiProgress::new();
     let pb_r = mp.add(pb_r);
@@ -79,7 +87,7 @@ async fn main() -> Result<(), sqlx::Error> {
 
     let read: JoinHandle<Result<(), sqlx::Error>> = tokio::spawn(async move {
         let query = format!(
-            "SELECT `t`.`vector` FROM `{table}` AS `t` LIMIT {limit}",
+            "SELECT `t`.`vector` FROM `{table}` AS `t` ORDER BY `internal_id` ASC LIMIT {limit}",
             table = table,
             limit = LIMIT
         );
