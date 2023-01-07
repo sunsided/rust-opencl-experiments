@@ -40,6 +40,7 @@ async fn main() -> Result<(), sqlx::Error> {
     let pb_w = mp.add(pb_w);
 
     let path = PathBuf::from("vectors.bin");
+
     let options = AsyncOptions::new()
         .read(true)
         .write(true)
