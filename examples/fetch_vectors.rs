@@ -1,10 +1,12 @@
 use fmmap::tokio::{AsyncMmapFileMut, AsyncMmapFileMutExt, AsyncOptions};
 use futures::TryStreamExt;
-use indicatif::{ProgressBar, ProgressStyle};
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use sqlx::{mysql::MySqlPoolOptions, MySql, Row, Transaction};
 use std::env;
 use std::path::PathBuf;
+use tokio::io;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::task::JoinHandle;
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
@@ -23,10 +25,19 @@ async fn main() -> Result<(), sqlx::Error> {
     let num_vectors = get_num_vectors(&table, &mut tx).await?.min(LIMIT);
     let num_dimensions = get_num_floats(&table, &mut tx).await?;
 
-    let pb = ProgressBar::new(num_vectors as u64);
-    pb.set_style(ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} ({per_sec}, {eta})")
+    let pb_r = ProgressBar::new(num_vectors as u64);
+    pb_r.set_style(ProgressStyle::with_template("{spinner:.green} Fetch {pos}/{len} {elapsed_precise} [{wide_bar:.cyan/blue}] {eta}")
         .unwrap()
         .progress_chars("#>-"));
+
+    let pb_w = ProgressBar::new(num_vectors as u64);
+    pb_w.set_style(ProgressStyle::with_template("{spinner:.green} Store {pos}/{len} {elapsed_precise} [{wide_bar:.cyan/blue}] {eta}")
+        .unwrap()
+        .progress_chars("#>-"));
+
+    let mp = MultiProgress::new();
+    let pb_r = mp.add(pb_r);
+    let pb_w = mp.add(pb_w);
 
     let path = PathBuf::from("vectors.bin");
     let options = AsyncOptions::new()
@@ -40,33 +51,57 @@ async fn main() -> Result<(), sqlx::Error> {
     let mut mmap = AsyncMmapFileMut::open_with_options(path, options)
         .await
         .unwrap();
-    let mut writer = mmap.writer(0).unwrap();
 
-    writer.write_u32(0).await.unwrap(); // version
-    writer.write_u32(u32::MAX).await.unwrap(); // padding
-    writer.write_u32(num_vectors as u32).await.unwrap();
-    writer.write_u32(num_dimensions as u32).await.unwrap();
-    writer.flush().await?;
+    let (sender, mut recv) = tokio::sync::mpsc::unbounded_channel();
 
-    let query = format!(
-        "SELECT `t`.`vector` FROM `{table}` AS `t` LIMIT {limit}",
-        table = table,
-        limit = LIMIT
-    );
-    let mut stream = sqlx::query(query.as_str()).fetch(&mut tx);
-    while let Some(row) = stream.try_next().await? {
-        let mut bytes: &[u8] = row.try_get(0)?;
+    let write: JoinHandle<io::Result<()>> = tokio::spawn(async move {
+        let mut writer = mmap.writer(0).unwrap();
 
-        for _ in 0..num_dimensions {
-            let float = bytes.read_f32_le().await?;
-            writer.write_f32(float).await.unwrap();
+        writer.write_u32(0).await.unwrap(); // version
+        writer.write_u32(u32::MAX).await.unwrap(); // padding
+        writer.write_u32(num_vectors as u32).await.unwrap();
+        writer.write_u32(num_dimensions as u32).await.unwrap();
+        writer.flush().await?;
+
+        while let Some(vec) = recv.recv().await {
+            for float in vec {
+                writer.write_f32(float).await?;
+            }
+
+            pb_w.inc(1);
         }
 
-        pb.inc(1);
-    }
+        writer.flush().await?;
+        pb_w.finish_and_clear();
+        Ok(())
+    });
 
-    writer.flush().await?;
-    pb.finish_and_clear();
+    let read: JoinHandle<Result<(), sqlx::Error>> = tokio::spawn(async move {
+        let query = format!(
+            "SELECT `t`.`vector` FROM `{table}` AS `t` LIMIT {limit}",
+            table = table,
+            limit = LIMIT
+        );
+
+        let mut stream = sqlx::query(query.as_str()).fetch(&mut tx);
+        while let Some(row) = stream.try_next().await? {
+            let mut bytes: &[u8] = row.try_get(0)?;
+
+            let mut vec = Vec::with_capacity(num_dimensions);
+            for _ in 0..num_dimensions {
+                let float = bytes.read_f32_le().await?;
+                vec.push(float);
+            }
+
+            sender.send(vec).unwrap();
+            pb_r.inc(1);
+        }
+
+        pb_r.finish_and_clear();
+        Ok(())
+    });
+
+    let _ = tokio::join!(write, read);
 
     Ok(())
 }
