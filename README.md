@@ -12,5 +12,5 @@ The format of `vectors.bin` is
 | 4      | Number of vectors    | 1000000       |
 | 4      | Number of dimensions | 4096          |
 
-The [examples/fetch_vectors.rs](examples/fetch_vectors.rs) script is one
+The [examples/fetch_vectors.rs](bins/fetch_vectors/src/bin) script is one
 implementation for fetching data from a proprietary data source.

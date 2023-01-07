@@ -1,12 +1,11 @@
 mod vec_traits;
 mod vecgen;
-pub mod vecdb;
 
 use std::path::PathBuf;
 use std::time::Instant;
 use ocl::ProQue;
 use ocl_stream::OCLStreamExecutor;
-use crate::vecdb::VecDb;
+use vecdb::VecDb;
 
 #[tokio::main]
 async fn main() {

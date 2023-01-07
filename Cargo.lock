@@ -357,6 +357,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "fetch-vectors"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
+ "dotenvy",
+ "fmmap",
+ "futures 0.3.25",
+ "indicatif",
+ "sqlx",
+ "tokio",
+]
+
+[[package]]
 name = "fmmap"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -917,7 +930,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6f61fba1741ea2b3d6a1e3178721804bb716a68a6aeba1149b5d52e3d464ea66"
 
 [[package]]
-name = "opencl-experiments"
+name = "opencl-bf-search"
 version = "0.1.0"
 dependencies = [
  "approx",
@@ -932,6 +945,7 @@ dependencies = [
  "rand_xoshiro",
  "sqlx",
  "tokio",
+ "vecdb",
 ]
 
 [[package]]
@@ -1708,6 +1722,15 @@ name = "vcpkg"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
+
+[[package]]
+name = "vecdb"
+version = "0.1.0"
+dependencies = [
+ "fmmap",
+ "futures 0.3.25",
+ "tokio",
+]
 
 [[package]]
 name = "version_check"

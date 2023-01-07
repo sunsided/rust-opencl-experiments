@@ -1,0 +1,25 @@
+[package]
+name = "opencl-bf-search"
+version = "0.1.0"
+edition = "2021"
+
+[[example]]
+name = "trivial"
+path = "examples/trivial.rs"
+
+[dependencies]
+approx = "0.5.1"
+fmmap = { version = "0.3.2", features = ["tokio", "tokio-async"] }
+ocl = "0.19.4"
+ocl-stream = "0.3.5"
+rand = "0.8.5"
+rand_xoshiro = "0.6.0"
+tokio = { version = "1.23.1", features = ["full"] }
+vecdb = { path = "../../crates/vecdb" }
+
+[dev-dependencies]
+byteorder = "1.4.3"
+dotenvy = "0.15.6"
+futures = "0.3.25"
+indicatif = { version = "0.17.2", features = ["tokio"] }
+sqlx = { version = "0.6.2", features = ["runtime-tokio-native-tls", "mysql"] }

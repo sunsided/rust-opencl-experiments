@@ -1,0 +1,14 @@
+[package]
+name = "fetch-vectors"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+fmmap = { version = "0.3.2", features = ["tokio", "tokio-async"] }
+tokio = { version = "1.23.1", features = ["full"] }
+sqlx = { version = "0.6.2", features = ["runtime-tokio-native-tls", "mysql"] }
+byteorder = "1.4.3"
+dotenvy = "0.15.6"
+futures = "0.3.25"
+indicatif = { version = "0.17.2", features = ["tokio"] }
+
