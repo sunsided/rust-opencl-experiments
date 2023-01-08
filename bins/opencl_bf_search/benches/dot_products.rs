@@ -10,7 +10,7 @@ fn from_elem(c: &mut Criterion) {
     let size: usize = 1024;
 
     let rt = tokio::runtime::Runtime::new().unwrap();
-    let chunk = rt.block_on(async { load_vectors::<0, 0>(size).await });
+    let chunk = rt.block_on(async { load_vectors(size).await });
 
     let first_vec = Vec::from(chunk.get_vec(0));
 
@@ -19,9 +19,7 @@ fn from_elem(c: &mut Criterion) {
     });
 }
 
-async fn load_vectors<const NUM_VECS_HINT: usize, const NUM_DIMS_HINT: usize>(
-    sample_size: usize,
-) -> MemoryChunk<NUM_VECS_HINT, NUM_DIMS_HINT> {
+async fn load_vectors(sample_size: usize) -> MemoryChunk {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("..")
         .join("..")
@@ -38,8 +36,7 @@ async fn load_vectors<const NUM_VECS_HINT: usize, const NUM_DIMS_HINT: usize>(
     })
     .into();
 
-    let mut chunk: MemoryChunk<NUM_VECS_HINT, NUM_DIMS_HINT> =
-        MemoryChunk::new(sample_size, db.num_dimensions);
+    let mut chunk = MemoryChunk::new(sample_size, db.num_dimensions);
     let data = chunk.as_mut();
 
     println!("Loading {sample_size} elements from vector database ...");

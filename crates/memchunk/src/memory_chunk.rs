@@ -1,15 +1,13 @@
 use abstractions::{NumDimensions, NumVectors};
 
 #[derive(Debug)]
-pub struct MemoryChunk<const NUM_VECS_HINT: usize = 0, const NUM_DIMS_HINT: usize = 0> {
+pub struct MemoryChunk {
     num_vecs: usize,
     num_dims: usize,
     data: Vec<f32>,
 }
 
-impl<const NUM_VECS_HINT: usize, const NUM_DIMS_HINT: usize>
-    MemoryChunk<NUM_VECS_HINT, NUM_DIMS_HINT>
-{
+impl MemoryChunk {
     pub fn new_from(data: Vec<f32>, num_vectors: NumVectors) -> Self {
         let num_dims = data.len() / *num_vectors;
         assert_eq!(
@@ -121,36 +119,28 @@ impl<const NUM_VECS_HINT: usize, const NUM_DIMS_HINT: usize>
         &self.data[start..end]
     }
 
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
+
     #[inline(always)]
     fn num_vecs(&self) -> usize {
-        if NUM_VECS_HINT == 0 {
-            self.num_vecs
-        } else {
-            NUM_VECS_HINT
-        }
+        self.num_vecs
     }
 
     #[inline(always)]
     fn num_dims(&self) -> usize {
-        if NUM_DIMS_HINT == 0 {
-            self.num_dims
-        } else {
-            NUM_DIMS_HINT
-        }
+        self.num_dims
     }
 }
 
-impl<const NUM_VECS: usize, const NUM_DIMS: usize> AsRef<[f32]>
-    for MemoryChunk<NUM_VECS, NUM_DIMS>
-{
+impl AsRef<[f32]> for MemoryChunk {
     fn as_ref(&self) -> &[f32] {
         &self.data
     }
 }
 
-impl<const NUM_VECS: usize, const NUM_DIMS: usize> AsMut<[f32]>
-    for MemoryChunk<NUM_VECS, NUM_DIMS>
-{
+impl AsMut<[f32]> for MemoryChunk {
     fn as_mut(&mut self) -> &mut [f32] {
         &mut self.data
     }

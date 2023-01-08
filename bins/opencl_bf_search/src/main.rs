@@ -27,8 +27,7 @@ async fn main() {
     })
     .into();
 
-    // let mut chunk: MemoryChunk<SAMPLE_SIZE, 384> =
-    let mut chunk: MemoryChunk<0, 0> = MemoryChunk::new(sample_size, db.num_dimensions);
+    let mut chunk = MemoryChunk::new(sample_size, db.num_dimensions);
     let data = chunk.as_mut();
 
     println!("Loading {sample_size} elements from vector database ...");
