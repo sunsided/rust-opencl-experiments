@@ -7,3 +7,6 @@ members = [
 default-members = [
     "bins/opencl_bf_search"
 ]
+
+[profile.release]
+opt-level = 3
