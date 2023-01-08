@@ -18,8 +18,6 @@ fn from_elem(c: &mut Criterion) {
         b.iter(|| chunk.search_naive(black_box(&first_vec)));
     });
 
-    let first_vec: &[f32; 384] = first_vec[0..].try_into().unwrap();
-
     c.bench_with_input(
         BenchmarkId::new("search_unrolled::<4>", size),
         &size,

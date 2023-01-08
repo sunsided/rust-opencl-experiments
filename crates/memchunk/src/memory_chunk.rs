@@ -41,8 +41,8 @@ impl MemoryChunk {
     }
 
     pub fn search_naive(&self, query: &[f32]) -> usize {
-        let num_vecs = self.num_vecs();
-        let num_dims = self.num_dims();
+        let num_vecs = self.num_vecs;
+        let num_dims = self.num_dims;
 
         let mut results = vec![0.0; num_vecs];
 
@@ -73,9 +73,9 @@ impl MemoryChunk {
         max_idx
     }
 
-    pub fn search_unrolled<const UNROLL_FACTOR: usize>(&self, query: &[f32; 384]) -> usize {
-        let num_vecs = self.num_vecs();
-        let num_dims = self.num_dims();
+    pub fn search_unrolled<const UNROLL_FACTOR: usize>(&self, query: &[f32]) -> usize {
+        let num_vecs = self.num_vecs;
+        let num_dims = self.num_dims;
 
         let mut results = vec![0.0; num_vecs];
 
@@ -106,7 +106,7 @@ impl MemoryChunk {
         #[inline(always)]
         #[unroll::unroll_for_loops]
         fn unrolled_dots<const UNROLL_FACTOR: usize>(
-            query: &[f32; 384],
+            query: &[f32],
             data: &[f32],
             start_index: usize,
             d: usize,
@@ -129,16 +129,6 @@ impl MemoryChunk {
 
     pub fn len(&self) -> usize {
         self.data.len()
-    }
-
-    #[inline(always)]
-    fn num_vecs(&self) -> usize {
-        self.num_vecs
-    }
-
-    #[inline(always)]
-    fn num_dims(&self) -> usize {
-        self.num_dims
     }
 }
 

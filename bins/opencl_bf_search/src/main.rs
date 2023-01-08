@@ -62,7 +62,6 @@ async fn main() {
     let _ref = chunk.search_naive(&first_vec);
 
     let start = Instant::now();
-    let first_vec: &[f32; 384] = first_vec[0..].try_into().unwrap();
     for _ in 0..TRIALS {
         let _result =
             std::hint::black_box(chunk.search_unrolled::<8>(std::hint::black_box(&first_vec)));
