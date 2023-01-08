@@ -3,6 +3,7 @@ use abstractions::{NumDimensions, NumVectors};
 #[derive(Debug)]
 pub struct MemoryChunk {
     num_vecs: usize,
+    virt_num_vecs: usize,
     num_dims: usize,
     data: Vec<f32>,
 }
@@ -23,6 +24,7 @@ impl MemoryChunk {
         Self {
             data,
             num_vecs: *num_vectors,
+            virt_num_vecs: *num_vectors,
             num_dims,
         }
     }
@@ -36,12 +38,20 @@ impl MemoryChunk {
         Self {
             data: vec![0.0; num_vectors * num_dimensions],
             num_vecs: *num_vectors,
+            virt_num_vecs: *num_vectors,
             num_dims: *num_dimensions,
         }
     }
 
+    pub fn use_num_vecs(&mut self, num_vecs: NumVectors) {
+        self.virt_num_vecs = match *num_vecs {
+            0 => self.num_vecs,
+            x => x,
+        }
+    }
+
     pub fn search_naive(&self, query: &[f32]) -> usize {
-        let num_vecs = self.num_vecs;
+        let num_vecs = self.virt_num_vecs;
         let num_dims = self.num_dims;
 
         let mut results = vec![0.0; num_vecs];
@@ -74,7 +84,7 @@ impl MemoryChunk {
     }
 
     pub fn search_unrolled<const UNROLL_FACTOR: usize>(&self, query: &[f32]) -> usize {
-        let num_vecs = self.num_vecs;
+        let num_vecs = self.virt_num_vecs;
         let num_dims = self.num_dims;
 
         let mut results = vec![0.0; num_vecs];
