@@ -1,6 +1,8 @@
+mod memory_chunk;
 mod vec_traits;
 mod vecgen;
 
+use crate::memory_chunk::MemoryChunk;
 use ocl::ProQue;
 use ocl_stream::OCLStreamExecutor;
 use std::path::PathBuf;
@@ -17,29 +19,27 @@ async fn main() {
 
     let num_vecs = *db.num_vectors;
     let num_dims = *db.num_dimensions;
-    let mut vecs = Vec::with_capacity(num_vecs);
 
-    let sample_size = num_vecs.min(1000);
-    let mut chunk = vec![0.0; sample_size * num_dims];
+    let sample_size = num_vecs;
+
+    // const SAMPLE_SIZE: usize = 100_000;
+    // let sample_size = num_vecs.min(SAMPLE_SIZE);
+    // let mut chunk: MemoryChunk<SAMPLE_SIZE, 384> =
+    let mut chunk: MemoryChunk<0, 0> = MemoryChunk::new(sample_size.into(), db.num_dimensions);
+    let data = chunk.as_mut();
 
     let num_read = db
         .read_all_vecs(|v, vec| {
             debug_assert_eq!(vec.len(), num_dims);
-
-            let duration = Instant::now() - start;
-            println!(
-                "Reading {v} / {num_vecs} ({} vecs/s)",
-                vecs.len() as f32 / duration.as_secs_f32()
-            );
-
             #[cfg(debug_assertions)]
-            let norm = vec.iter().fold(0.0f32, |prev, x| prev + x * x).sqrt();
-            debug_assert!((norm - 1.0f32).abs() < 0.001f32, "Denormal vector detected");
-            vecs.push(Vec::from(vec));
+            {
+                let norm = vec.iter().fold(0.0f32, |prev, x| prev + x * x).sqrt();
+                debug_assert!((norm - 1.0f32).abs() < 0.001f32, "Denormal vector detected");
+            }
 
             let start = v * num_dims;
             let end = start + num_dims;
-            chunk[start..end].copy_from_slice(vec);
+            data[start..end].copy_from_slice(vec);
 
             // Early exit :)
             v < sample_size - 1
@@ -51,6 +51,22 @@ async fn main() {
     println!(
         "Loading duration {} s for {num_read} vectors",
         duration.as_secs_f32()
+    );
+
+    let first_vec = Vec::from(&data[0..num_dims]);
+    const TRIALS: usize = 100;
+    println!("Running {TRIALS} queries");
+
+    let start = Instant::now();
+    for _ in 0..TRIALS {
+        let _result = std::hint::black_box(chunk.search(std::hint::black_box(&first_vec)));
+    }
+    let duration = Instant::now() - start;
+    println!(
+        "Duration searching for {TRIALS} vectors: {} s ({} queries/s, {} vecs/s)",
+        duration.as_secs_f32(),
+        TRIALS as f32 / duration.as_secs_f32(),
+        (TRIALS * num_vecs) as f32 / duration.as_secs_f32()
     );
 
     // create the ProQue

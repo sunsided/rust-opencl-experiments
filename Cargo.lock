@@ -942,16 +942,11 @@ name = "opencl-bf-search"
 version = "0.1.0"
 dependencies = [
  "approx",
- "byteorder",
- "dotenvy",
  "fmmap",
- "futures 0.3.25",
- "indicatif",
  "ocl",
  "ocl-stream",
  "rand",
  "rand_xoshiro",
- "sqlx",
  "tokio",
  "vecdb",
 ]

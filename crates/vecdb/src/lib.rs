@@ -1,6 +1,6 @@
 use fmmap::tokio::{AsyncMmapFileExt, AsyncMmapFileMut, AsyncMmapFileMutExt, AsyncOptions};
 use std::borrow::Borrow;
-use std::ops::Deref;
+use std::ops::{Deref, Mul};
 use std::path::PathBuf;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -209,5 +209,21 @@ impl Deref for NumVectors {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl Mul<NumDimensions> for NumVectors {
+    type Output = usize;
+
+    fn mul(self, rhs: NumDimensions) -> Self::Output {
+        self.0 * rhs.0
+    }
+}
+
+impl Mul<NumVectors> for NumDimensions {
+    type Output = usize;
+
+    fn mul(self, rhs: NumVectors) -> Self::Output {
+        self.0 * rhs.0
     }
 }

@@ -17,9 +17,5 @@ rand_xoshiro = "0.6.0"
 tokio = { version = "1.23.1", features = ["full"] }
 vecdb = { path = "../../crates/vecdb" }
 
-[dev-dependencies]
-byteorder = "1.4.3"
-dotenvy = "0.15.6"
-futures = "0.3.25"
-indicatif = { version = "0.17.2", features = ["tokio"] }
-sqlx = { version = "0.6.2", features = ["runtime-tokio-native-tls", "mysql"] }
+[profile.release]
+opt-level = 3
