@@ -29,7 +29,7 @@ async fn main() {
     let data = chunk.as_mut();
 
     let num_read = db
-        .read_all_vecs(|v, vec| {
+        .read_n_vecs(sample_size, |v, vec| {
             debug_assert_eq!(vec.len(), num_dims);
             #[cfg(debug_assertions)]
             {
@@ -41,8 +41,7 @@ async fn main() {
             let end = start + num_dims;
             data[start..end].copy_from_slice(vec);
 
-            // Early exit :)
-            v < sample_size - 1
+            true
         })
         .await
         .unwrap();

@@ -118,9 +118,24 @@ impl VecDb {
         &mut self,
         mut fun: F,
     ) -> Result<usize, fmmap::error::Error> {
+        self.read_n_vecs(self.num_vectors.0, fun).await
+    }
+
+    /// Reads all vectors from the file.
+    /// For each vector, executes the specified function, passing the vector.
+    ///
+    /// If the provided function returns `true`, the next vector will be processed.
+    /// If `false` is returned or no more vectors are available,
+    /// processing stops and the number of processed vectors will be returned.
+    pub async fn read_n_vecs<F: FnMut(usize, &[f32]) -> bool>(
+        &mut self,
+        count: usize,
+        mut fun: F,
+    ) -> Result<usize, fmmap::error::Error> {
+        let count = self.num_vectors.0.min(count);
         let mut reader = self.mmap.reader(self.pos)?;
         let mut vec = vec![0.0; self.num_dimensions.0];
-        for v in 0..self.num_vectors.0 {
+        for v in 0..count {
             for i in 0..self.num_dimensions.0 {
                 vec[i] = reader.read_f32().await?;
             }
@@ -129,7 +144,7 @@ impl VecDb {
             }
             self.pos += self.vec_stride();
         }
-        Ok(self.num_vectors.0)
+        Ok(count)
     }
 
     pub fn flush(&mut self) -> Result<(), fmmap::error::Error> {
