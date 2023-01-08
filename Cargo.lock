@@ -3,6 +3,10 @@
 version = 3
 
 [[package]]
+name = "abstractions"
+version = "0.1.0"
+
+[[package]]
 name = "ahash"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -716,6 +720,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dffe52ecf27772e601905b7522cb4ef790d2cc203488bbd0e2fe85fcb74566d"
 
 [[package]]
+name = "memchunk"
+version = "0.1.0"
+dependencies = [
+ "abstractions",
+]
+
+[[package]]
 name = "memmapix"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -943,6 +954,7 @@ version = "0.1.0"
 dependencies = [
  "approx",
  "fmmap",
+ "memchunk",
  "ocl",
  "ocl-stream",
  "rand",
@@ -1730,6 +1742,7 @@ checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
 name = "vecdb"
 version = "0.1.0"
 dependencies = [
+ "abstractions",
  "fmmap",
  "futures 0.3.25",
  "tokio",

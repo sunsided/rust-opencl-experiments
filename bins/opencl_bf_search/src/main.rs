@@ -1,8 +1,7 @@
-mod memory_chunk;
 mod vec_traits;
 mod vecgen;
 
-use crate::memory_chunk::MemoryChunk;
+use memchunk::MemoryChunk;
 use ocl::ProQue;
 use ocl_stream::OCLStreamExecutor;
 use std::path::PathBuf;
@@ -20,14 +19,19 @@ async fn main() {
     let num_vecs = *db.num_vectors;
     let num_dims = *db.num_dimensions;
 
-    let sample_size = num_vecs;
+    const SAMPLE_SIZE: usize = 10_000;
+    let sample_size = (if SAMPLE_SIZE > 0 {
+        num_vecs.min(SAMPLE_SIZE)
+    } else {
+        num_vecs
+    })
+    .into();
 
-    // const SAMPLE_SIZE: usize = 100_000;
-    // let sample_size = num_vecs.min(SAMPLE_SIZE);
     // let mut chunk: MemoryChunk<SAMPLE_SIZE, 384> =
-    let mut chunk: MemoryChunk<0, 0> = MemoryChunk::new(sample_size.into(), db.num_dimensions);
+    let mut chunk: MemoryChunk<0, 0> = MemoryChunk::new(sample_size, db.num_dimensions);
     let data = chunk.as_mut();
 
+    println!("Loading {sample_size} elements from vector database ...");
     let num_read = db
         .read_n_vecs(sample_size, |v, vec| {
             debug_assert_eq!(vec.len(), num_dims);

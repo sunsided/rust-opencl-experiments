@@ -1,6 +1,6 @@
+use abstractions::{NumDimensions, NumVectors};
 use fmmap::tokio::{AsyncMmapFileExt, AsyncMmapFileMut, AsyncMmapFileMutExt, AsyncOptions};
 use std::borrow::Borrow;
-use std::ops::{Deref, Mul};
 use std::path::PathBuf;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -11,12 +11,6 @@ pub struct VecDb {
     pub num_dimensions: NumDimensions,
     pos: usize,
 }
-
-#[derive(Default, Debug, Copy, Clone)]
-pub struct NumVectors(usize);
-
-#[derive(Default, Debug, Copy, Clone)]
-pub struct NumDimensions(usize);
 
 impl VecDb {
     const HEADER_SIZE: usize = 16;
@@ -31,15 +25,15 @@ impl VecDb {
             .write(true)
             .create(true)
             .truncate(true)
-            .max_size((num_vectors.0 * 4 * num_dimensions.0 + Self::HEADER_SIZE) as u64)
-            .len(num_vectors.0 * 4 * num_dimensions.0 + Self::HEADER_SIZE);
+            .max_size((num_vectors * 4 * num_dimensions + Self::HEADER_SIZE) as u64)
+            .len(num_vectors * 4 * num_dimensions + Self::HEADER_SIZE);
 
         let mut mmap = AsyncMmapFileMut::open_with_options(path.borrow(), options).await?;
         let mut writer = mmap.writer(0)?;
         writer.write_u32(0).await?; // version
         writer.write_u32(u32::MAX).await?; // padding
-        writer.write_u32(num_vectors.0 as u32).await?;
-        writer.write_u32(num_dimensions.0 as u32).await?;
+        writer.write_u32(*num_vectors as u32).await?;
+        writer.write_u32(*num_dimensions as u32).await?;
         writer.flush().await?;
 
         Ok(Self {
@@ -75,7 +69,7 @@ impl VecDb {
 
     pub async fn write_vec<V: AsRef<[f32]>>(&mut self, vec: V) -> Result<(), std::io::Error> {
         let vec = vec.as_ref();
-        assert_eq!(vec.len(), self.num_dimensions.0);
+        assert_eq!(vec.len(), *self.num_dimensions);
         let mut writer = self.mmap.writer(self.pos).unwrap(); // TODO: Fix
         for float in vec {
             writer.write_f32(*float).await?;
@@ -89,9 +83,9 @@ impl VecDb {
         mut vec: V,
     ) -> Result<(), fmmap::error::Error> {
         let vec = vec.as_mut();
-        assert_eq!(vec.len(), self.num_dimensions.0);
+        assert_eq!(vec.len(), *self.num_dimensions);
         let mut reader = self.mmap.reader(self.pos)?;
-        for i in 0..self.num_dimensions.0 {
+        for i in self.num_dimensions {
             vec[i] = reader.read_f32().await?;
         }
         self.pos += self.vec_stride();
@@ -100,8 +94,8 @@ impl VecDb {
 
     pub async fn read_vec(&mut self) -> Result<Vec<f32>, fmmap::error::Error> {
         let mut reader = self.mmap.reader(self.pos)?;
-        let mut vec = Vec::with_capacity(self.num_dimensions.0);
-        for _ in 0..self.num_dimensions.0 {
+        let mut vec = Vec::with_capacity(*self.num_dimensions);
+        for _ in self.num_dimensions {
             vec.push(reader.read_f32().await?);
         }
         self.pos += self.vec_stride();
@@ -116,9 +110,9 @@ impl VecDb {
     /// processing stops and the number of processed vectors will be returned.
     pub async fn read_all_vecs<F: FnMut(usize, &[f32]) -> bool>(
         &mut self,
-        mut fun: F,
+        fun: F,
     ) -> Result<usize, fmmap::error::Error> {
-        self.read_n_vecs(self.num_vectors.0, fun).await
+        self.read_n_vecs(self.num_vectors, fun).await
     }
 
     /// Reads all vectors from the file.
@@ -129,14 +123,14 @@ impl VecDb {
     /// processing stops and the number of processed vectors will be returned.
     pub async fn read_n_vecs<F: FnMut(usize, &[f32]) -> bool>(
         &mut self,
-        count: usize,
+        count: NumVectors,
         mut fun: F,
     ) -> Result<usize, fmmap::error::Error> {
-        let count = self.num_vectors.0.min(count);
+        let count = self.num_vectors.min(*count);
         let mut reader = self.mmap.reader(self.pos)?;
-        let mut vec = vec![0.0; self.num_dimensions.0];
+        let mut vec = vec![0.0; *self.num_dimensions];
         for v in 0..count {
-            for i in 0..self.num_dimensions.0 {
+            for i in self.num_dimensions {
                 vec[i] = reader.read_f32().await?;
             }
             if !fun(v, &vec) {
@@ -153,92 +147,12 @@ impl VecDb {
     }
 
     fn vec_stride(&self) -> usize {
-        4 * self.num_dimensions.0
+        4 * self.num_dimensions
     }
 }
 
 impl Drop for VecDb {
     fn drop(&mut self) {
         self.flush().ok();
-    }
-}
-
-impl From<usize> for NumDimensions {
-    fn from(value: usize) -> Self {
-        Self(value)
-    }
-}
-
-impl From<usize> for NumVectors {
-    fn from(value: usize) -> Self {
-        Self(value)
-    }
-}
-
-impl From<u32> for NumDimensions {
-    fn from(value: u32) -> Self {
-        Self(value as _)
-    }
-}
-
-impl From<u32> for NumVectors {
-    fn from(value: u32) -> Self {
-        Self(value as _)
-    }
-}
-
-impl Into<usize> for NumDimensions {
-    fn into(self) -> usize {
-        self.0
-    }
-}
-
-impl Into<usize> for NumVectors {
-    fn into(self) -> usize {
-        self.0
-    }
-}
-
-impl AsRef<usize> for NumDimensions {
-    fn as_ref(&self) -> &usize {
-        &self.0
-    }
-}
-
-impl AsRef<usize> for NumVectors {
-    fn as_ref(&self) -> &usize {
-        &self.0
-    }
-}
-
-impl Deref for NumDimensions {
-    type Target = usize;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl Deref for NumVectors {
-    type Target = usize;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl Mul<NumDimensions> for NumVectors {
-    type Output = usize;
-
-    fn mul(self, rhs: NumDimensions) -> Self::Output {
-        self.0 * rhs.0
-    }
-}
-
-impl Mul<NumVectors> for NumDimensions {
-    type Output = usize;
-
-    fn mul(self, rhs: NumVectors) -> Self::Output {
-        self.0 * rhs.0
     }
 }

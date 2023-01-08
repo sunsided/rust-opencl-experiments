@@ -2,6 +2,7 @@
 name = "fetch-vectors"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.66"
 
 [dependencies]
 fmmap = { version = "0.3.2", features = ["tokio", "tokio-async"] }

@@ -1,4 +1,4 @@
-use vecdb::{NumDimensions, NumVectors};
+use abstractions::{NumDimensions, NumVectors};
 
 #[derive(Debug)]
 pub struct MemoryChunk<const NUM_VECS_HINT: usize = 0, const NUM_DIMS_HINT: usize = 0> {

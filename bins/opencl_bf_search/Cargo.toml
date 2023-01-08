@@ -2,6 +2,7 @@
 name = "opencl-bf-search"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.66"
 
 [[example]]
 name = "trivial"
@@ -15,4 +16,5 @@ ocl-stream = "0.3.5"
 rand = "0.8.5"
 rand_xoshiro = "0.6.0"
 tokio = { version = "1.24.1", features = ["full"] }
+memchunk = { path = "../../crates/memchunk" }
 vecdb = { path = "../../crates/vecdb" }
