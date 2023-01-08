@@ -14,9 +14,35 @@ fn from_elem(c: &mut Criterion) {
 
     let first_vec = Vec::from(chunk.get_vec(0));
 
-    c.bench_with_input(BenchmarkId::new("search", size), &size, |b, &s| {
-        b.iter(|| chunk.search(black_box(&first_vec)));
+    c.bench_with_input(BenchmarkId::new("search_naive", size), &size, |b, &s| {
+        b.iter(|| chunk.search_naive(black_box(&first_vec)));
     });
+
+    let first_vec: &[f32; 384] = first_vec[0..].try_into().unwrap();
+
+    c.bench_with_input(
+        BenchmarkId::new("search_unrolled::<4>", size),
+        &size,
+        |b, &s| {
+            b.iter(|| chunk.search_unrolled::<4>(black_box(&first_vec)));
+        },
+    );
+
+    c.bench_with_input(
+        BenchmarkId::new("search_unrolled::<8>", size),
+        &size,
+        |b, &s| {
+            b.iter(|| chunk.search_unrolled::<8>(black_box(&first_vec)));
+        },
+    );
+
+    c.bench_with_input(
+        BenchmarkId::new("search_unrolled::<16>", size),
+        &size,
+        |b, &s| {
+            b.iter(|| chunk.search_unrolled::<16>(black_box(&first_vec)));
+        },
+    );
 }
 
 async fn load_vectors(sample_size: usize) -> MemoryChunk {

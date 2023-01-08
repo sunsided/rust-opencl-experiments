@@ -10,3 +10,4 @@ default-members = [
 
 [profile.release]
 opt-level = 3
+target-cpu = "native"
