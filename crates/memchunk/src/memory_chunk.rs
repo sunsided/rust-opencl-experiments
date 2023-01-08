@@ -1,3 +1,4 @@
+use crate::topk::topk;
 use abstractions::{NumDimensions, NumVectors};
 
 #[derive(Debug)]
@@ -50,7 +51,7 @@ impl MemoryChunk {
         }
     }
 
-    pub fn search_naive(&self, query: &[f32]) -> usize {
+    pub fn search_naive(&self, query: &[f32]) -> [(usize, f32); 10] {
         let num_vecs = self.virt_num_vecs;
         let num_dims = self.num_dims;
 
@@ -70,20 +71,11 @@ impl MemoryChunk {
             results[v] = sum;
         }
 
-        let mut max_score = 0.0;
-        let mut max_idx = 0;
-        for d in 0..num_vecs {
-            let score = results[d];
-            if score > max_score {
-                max_score = score;
-                max_idx = d;
-            }
-        }
-
-        max_idx
+        let topk = topk(&results);
+        topk
     }
 
-    pub fn search_unrolled<const UNROLL_FACTOR: usize>(&self, query: &[f32]) -> usize {
+    pub fn search_unrolled<const UNROLL_FACTOR: usize>(&self, query: &[f32]) -> [(usize, f32); 10] {
         let num_vecs = self.virt_num_vecs;
         let num_dims = self.num_dims;
 
@@ -101,17 +93,8 @@ impl MemoryChunk {
             results[v] = sum.iter().sum();
         }
 
-        let mut max_score = 0.0;
-        let mut max_idx = 0;
-        for d in 0..num_vecs {
-            let score = results[d];
-            if score > max_score {
-                max_score = score;
-                max_idx = d;
-            }
-        }
-
-        return max_idx;
+        let topk = topk(&results);
+        return topk;
 
         #[inline(always)]
         #[unroll::unroll_for_loops]

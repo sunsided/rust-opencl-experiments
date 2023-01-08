@@ -59,7 +59,7 @@ async fn main() {
     const TRIALS: usize = 100;
     println!("Running {TRIALS} queries");
 
-    let _ref = chunk.search_naive(&first_vec);
+    let _reference = chunk.search_naive(&first_vec);
 
     let start = Instant::now();
     for _ in 0..TRIALS {
