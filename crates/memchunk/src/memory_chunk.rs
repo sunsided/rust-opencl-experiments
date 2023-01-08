@@ -46,9 +46,6 @@ impl<const NUM_VECS_HINT: usize, const NUM_DIMS_HINT: usize>
         let num_vecs = self.num_vecs();
         let num_dims = self.num_dims();
 
-        // let num_vecs = NUM_VECS_HINT;
-        // let num_dims = NUM_DIMS_HINT;
-
         let mut results = vec![0.0; num_vecs];
 
         const UNROLL_FACTOR: usize = 8;
@@ -115,6 +112,13 @@ impl<const NUM_VECS_HINT: usize, const NUM_DIMS_HINT: usize>
         }
 
         max_idx
+    }
+
+    pub fn get_vec(&self, idx: usize) -> &[f32] {
+        let start = idx * self.num_dims;
+        let end = (idx + 1) * self.num_dims;
+        debug_assert!(idx < self.data.len());
+        &self.data[start..end]
     }
 
     #[inline(always)]
