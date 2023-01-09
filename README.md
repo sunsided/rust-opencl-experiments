@@ -1,4 +1,7 @@
-# OpenCL Experiments
+# OpenCL Experiments (WIP)
+
+Experiments for running streaming dot products on GPU using
+OpenCL in Rust.
 
 ## Vector Database
 
@@ -12,5 +15,5 @@ The format of `vectors.bin` is
 | 4      | Number of vectors    | 1000000       |
 | 4      | Number of dimensions | 4096          |
 
-The [examples/fetch_vectors.rs](bins/fetch_vectors/src/bin) script is one
+The [bins/fetch_vectors](bins/fetch_vectors/src/main.rs) script is one
 implementation for fetching data from a proprietary data source.
