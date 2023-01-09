@@ -71,7 +71,7 @@ impl MemoryChunk {
             results[v] = sum;
         }
 
-        let topk = topk(&results);
+        let topk = topk(&mut results);
         topk
     }
 
@@ -93,7 +93,7 @@ impl MemoryChunk {
             results[v] = sum.iter().sum();
         }
 
-        let topk = topk(&results);
+        let topk = topk(&mut results);
         return topk;
 
         #[inline(always)]
