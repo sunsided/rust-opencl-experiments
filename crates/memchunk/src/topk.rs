@@ -137,27 +137,31 @@ fn merge_into<const K: usize>(vs: &[f32], is: &[usize]) -> [Entry; K] {
 }
 
 fn quickselect_max(data: &mut [f32], indexes: &mut [usize], k: usize) -> Entry {
-    let pivot_index = partition_max(data, indexes);
+    let mut left = 0;
+    let mut right = data.len() - 1;
 
-    // TODO: Convert to loop
-    if pivot_index == k {
-        (indexes[k], data[k]).into()
-    } else if k < pivot_index {
-        quickselect_max(&mut data[..pivot_index], &mut indexes[..pivot_index], k)
-    } else {
-        quickselect_max(
-            &mut data[pivot_index + 1..],
-            &mut indexes[pivot_index + 1..],
-            k - pivot_index - 1,
-        )
+    loop {
+        let pivot_index = partition_max(data, indexes, left, right);
+        if pivot_index == k {
+            return Entry::new(k, data[k]);
+        } else if k < pivot_index {
+            right = pivot_index - 1;
+        } else {
+            left = pivot_index + 1;
+        }
     }
 }
 
-fn partition_max<T: PartialOrd>(data: &mut [T], indexes: &mut [usize]) -> usize {
-    let pivot = data.len() - 1;
-    let mut i = 0;
+fn partition_max<T: PartialOrd>(
+    data: &mut [T],
+    indexes: &mut [usize],
+    left: usize,
+    right: usize,
+) -> usize {
+    let pivot = right;
+    let mut i = left;
 
-    for j in 0..pivot {
+    for j in left..right {
         if data[j] >= data[pivot] {
             data.swap(i, j);
             indexes.swap(i, j);
