@@ -135,7 +135,7 @@ async fn main() {
     let dot_product_kernel = Kernel::builder()
         .program(&dot_product)
         .name("dot_product")
-        .queue(queue)
+        .queue(queue.clone())
         .global_work_size(chunk.num_vecs())
         .arg(&matrix_buffer)
         .arg(&vector_buffer)
@@ -147,6 +147,7 @@ async fn main() {
 
     unsafe { dot_product_kernel.enq().unwrap() };
     result_buffer.read(&mut result).enq().unwrap();
+    queue.finish().unwrap();
 
     println!(
         "Duration processing {vecs} vectors in OpenCL (full roundtrip): {duration} s",
