@@ -3,7 +3,7 @@ mod vecgen;
 
 use memchunk::MemoryChunk;
 use ocl::core::DeviceInfoResult;
-use ocl::{Buffer, Context, Device, Kernel, Platform, ProQue};
+use ocl::{Buffer, Context, Device, Kernel, Platform, ProQue, Program, Queue};
 use std::path::PathBuf;
 use std::time::Instant;
 use vecdb::VecDb;
@@ -59,10 +59,10 @@ async fn main() {
         }
     }
 
-    let q = ProQue::builder()
+    let dot_product = Program::builder()
         .src(
             "
-            __kernel void dot_product(const __global float *matrix,
+        __kernel void dot_product(const __global float *matrix,
                                      const __global float *vector,
                                      __global float *result,
                                      const int rows,
@@ -75,22 +75,55 @@ async fn main() {
                 result[row] = sum;
             }",
         )
-        .build()
+        .build(&context)
         .unwrap();
 
+    let priority_queue = Program::builder().src(
+        "
+        __kernel void priority_queue(__global float* dot_product_results, __global int* priority_queue,
+                                            __global int* index_queue, int num_elements, int k) {
+            int i = get_global_id(0);
+            if (i < k) {
+                priority_queue[i] = dot_product_results[i];
+                index_queue[i] = i;
+            } else if (dot_product_results[i] > priority_queue[0]) {
+                priority_queue[0] = dot_product_results[i];
+                index_queue[0] = i;
+            }
+            barrier(CLK_GLOBAL_MEM_FENCE);
+
+            for (int j = 0; j < (int)log2((float)k); j++) {
+                int parent = i >> (j + 1);
+                if (parent < k) {
+                    int left = (i >> j) | (1 << j);
+                    if (left < k) {
+                        int min_index = (priority_queue[left] < priority_queue[parent]) ? left : parent;
+                        priority_queue[parent] = priority_queue[min_index];
+                        index_queue[parent] = index_queue[min_index];
+                    }
+                }
+            }
+        }"
+    )
+    .build(&context)
+    .unwrap();
+
     let mut result = vec![0.0; chunk.num_vecs()];
+
+    let queue = Queue::new(&context, device, None).unwrap();
+
     let matrix_buffer = Buffer::<f32>::builder()
-        .queue(q.queue().clone())
+        .queue(queue.clone())
         .len(chunk.num_vecs() * chunk.num_dims())
         .build()
         .unwrap();
     let vector_buffer = Buffer::<f32>::builder()
-        .queue(q.queue().clone())
+        .queue(queue.clone())
         .len(chunk.num_dims())
         .build()
         .unwrap();
     let result_buffer = Buffer::<f32>::builder()
-        .queue(q.queue().clone())
+        .queue(queue.clone())
         .len(chunk.num_vecs())
         .build()
         .unwrap();
@@ -99,10 +132,10 @@ async fn main() {
     matrix_buffer.write(chunk.as_ref()).enq().unwrap();
     vector_buffer.write(&first_vec).enq().unwrap();
 
-    let kernel = Kernel::builder()
-        .program(&q.program())
+    let dot_product_kernel = Kernel::builder()
+        .program(&dot_product)
         .name("dot_product")
-        .queue(q.queue().clone())
+        .queue(queue)
         .global_work_size(chunk.num_vecs())
         .arg(&matrix_buffer)
         .arg(&vector_buffer)
@@ -112,7 +145,7 @@ async fn main() {
         .build()
         .unwrap();
 
-    unsafe { kernel.enq().unwrap() };
+    unsafe { dot_product_kernel.enq().unwrap() };
     result_buffer.read(&mut result).enq().unwrap();
 
     println!(
