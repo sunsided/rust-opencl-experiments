@@ -2,17 +2,23 @@ mod vec_traits;
 mod vecgen;
 
 use memchunk::MemoryChunk;
-use ocl::{Buffer, Kernel, ProQue, Queue};
-use ocl_stream::OCLStreamExecutor;
+use ocl::{Buffer, Kernel, ProQue};
 use std::path::PathBuf;
 use std::time::Instant;
 use vecdb::VecDb;
 
 #[tokio::main]
 async fn main() {
-    let chunk = load_vectors().await;
+    let chunk = load_vectors::<0>().await;
     let first_vec = Vec::from(chunk.get_vec(0));
+
+    let start = Instant::now();
     let _reference = chunk.search_naive(&first_vec);
+    println!(
+        "Duration processing {vecs} vectors on CPU: {duration} s",
+        vecs = chunk.num_vecs(),
+        duration = (Instant::now() - start).as_secs_f32()
+    );
 
     let q = ProQue::builder()
         .src(
@@ -50,6 +56,7 @@ async fn main() {
         .build()
         .unwrap();
 
+    let start = Instant::now();
     matrix_buffer.write(chunk.as_ref()).enq().unwrap();
     vector_buffer.write(&first_vec).enq().unwrap();
 
@@ -68,10 +75,17 @@ async fn main() {
 
     unsafe { kernel.enq().unwrap() };
     result_buffer.read(&mut result).enq().unwrap();
-    println!("{:?}", result);
+
+    println!(
+        "Duration processing {vecs} vectors in OpenCL (full roundtrip): {duration} s",
+        vecs = chunk.num_vecs(),
+        duration = (Instant::now() - start).as_secs_f32()
+    );
+
+    println!("{:?} ...", &result[..10]);
 }
 
-async fn load_vectors() -> MemoryChunk {
+async fn load_vectors<const SAMPLE_SIZE: usize>() -> MemoryChunk {
     let mut db = VecDb::open_read(PathBuf::from("vectors.bin"))
         .await
         .unwrap();
@@ -81,7 +95,6 @@ async fn load_vectors() -> MemoryChunk {
     let num_vecs = *db.num_vectors;
     let num_dims = *db.num_dimensions;
 
-    const SAMPLE_SIZE: usize = 10_000;
     let sample_size = (if SAMPLE_SIZE > 0 {
         num_vecs.min(SAMPLE_SIZE)
     } else {

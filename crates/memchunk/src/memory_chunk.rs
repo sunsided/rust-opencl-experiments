@@ -47,7 +47,7 @@ impl MemoryChunk {
     pub fn use_num_vecs(&mut self, num_vecs: NumVectors) {
         self.virt_num_vecs = match *num_vecs {
             0 => self.num_vecs,
-            x => x,
+            x => x.min(self.data.len()),
         }
     }
 
@@ -121,7 +121,7 @@ impl MemoryChunk {
     }
 
     pub fn len(&self) -> usize {
-        self.data.len()
+        self.num_dims * self.virt_num_vecs
     }
 
     pub fn num_vecs(&self) -> usize {
