@@ -1,4 +1,4 @@
-use crate::topk::topk;
+use crate::topk::{topk, Entry};
 use abstractions::{NumDimensions, NumVectors};
 
 #[derive(Debug)]
@@ -51,7 +51,7 @@ impl MemoryChunk {
         }
     }
 
-    pub fn search_naive(&self, query: &[f32]) -> [(usize, f32); 10] {
+    pub fn search_naive(&self, query: &[f32]) -> [Entry; 10] {
         let num_vecs = self.virt_num_vecs;
         let num_dims = self.num_dims;
 
@@ -75,7 +75,7 @@ impl MemoryChunk {
         topk
     }
 
-    pub fn search_unrolled<const UNROLL_FACTOR: usize>(&self, query: &[f32]) -> [(usize, f32); 10] {
+    pub fn search_unrolled<const UNROLL_FACTOR: usize>(&self, query: &[f32]) -> [Entry; 10] {
         let num_vecs = self.virt_num_vecs;
         let num_dims = self.num_dims;
 
