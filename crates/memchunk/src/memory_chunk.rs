@@ -123,6 +123,10 @@ impl MemoryChunk {
     pub fn len(&self) -> usize {
         self.data.len()
     }
+
+    pub fn num_dims(&self) -> usize {
+        self.num_dims
+    }
 }
 
 impl AsRef<[f32]> for MemoryChunk {

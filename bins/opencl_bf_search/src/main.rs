@@ -10,69 +10,11 @@ use vecdb::VecDb;
 
 #[tokio::main]
 async fn main() {
-    let mut db = VecDb::open_read(PathBuf::from("vectors.bin"))
-        .await
-        .unwrap();
+    let chunk = load_vectors().await;
 
-    let start = Instant::now();
-
-    let num_vecs = *db.num_vectors;
-    let num_dims = *db.num_dimensions;
-
-    const SAMPLE_SIZE: usize = 10_000;
-    let sample_size = (if SAMPLE_SIZE > 0 {
-        num_vecs.min(SAMPLE_SIZE)
-    } else {
-        num_vecs
-    })
-    .into();
-
-    let mut chunk = MemoryChunk::new(sample_size, db.num_dimensions);
-    let data = chunk.as_mut();
-
-    println!("Loading {sample_size} elements from vector database ...");
-    let num_read = db
-        .read_n_vecs(sample_size, |v, vec| {
-            debug_assert_eq!(vec.len(), num_dims);
-            #[cfg(debug_assertions)]
-            {
-                let norm = vec.iter().fold(0.0f32, |prev, x| prev + x * x).sqrt();
-                debug_assert!((norm - 1.0f32).abs() < 0.001f32, "Denormal vector detected");
-            }
-
-            let start = v * num_dims;
-            let end = start + num_dims;
-            data[start..end].copy_from_slice(vec);
-
-            true
-        })
-        .await
-        .unwrap();
-
-    let duration = Instant::now() - start;
-    println!(
-        "Loading duration {} s for {num_read} vectors",
-        duration.as_secs_f32()
-    );
-
-    let first_vec = Vec::from(&data[0..num_dims]);
-    const TRIALS: usize = 100;
-    println!("Running {TRIALS} queries");
+    let first_vec = Vec::from(chunk.get_vec(0));
 
     let _reference = chunk.search_naive(&first_vec);
-
-    let start = Instant::now();
-    for _ in 0..TRIALS {
-        let _result =
-            std::hint::black_box(chunk.search_unrolled::<8>(std::hint::black_box(&first_vec)));
-    }
-    let duration = Instant::now() - start;
-    println!(
-        "Duration searching for {TRIALS} vectors: {} s ({} queries/s, {} vecs/s)",
-        duration.as_secs_f32(),
-        TRIALS as f32 / duration.as_secs_f32(),
-        (TRIALS * num_vecs) as f32 / duration.as_secs_f32()
-    );
 
     // create the ProQue
     let pro_que = ProQue::builder()
@@ -140,6 +82,55 @@ async fn main() {
         count += 1;
     }
     assert_eq!(count, 100)
+}
+
+async fn load_vectors() -> MemoryChunk {
+    let mut db = VecDb::open_read(PathBuf::from("vectors.bin"))
+        .await
+        .unwrap();
+
+    let start = Instant::now();
+
+    let num_vecs = *db.num_vectors;
+    let num_dims = *db.num_dimensions;
+
+    const SAMPLE_SIZE: usize = 10_000;
+    let sample_size = (if SAMPLE_SIZE > 0 {
+        num_vecs.min(SAMPLE_SIZE)
+    } else {
+        num_vecs
+    })
+    .into();
+
+    let mut chunk = MemoryChunk::new(sample_size, db.num_dimensions);
+    let data = chunk.as_mut();
+
+    println!("Loading {sample_size} elements from vector database ...");
+    let num_read = db
+        .read_n_vecs(sample_size, |v, vec| {
+            debug_assert_eq!(vec.len(), num_dims);
+            #[cfg(debug_assertions)]
+            {
+                let norm = vec.iter().fold(0.0f32, |prev, x| prev + x * x).sqrt();
+                debug_assert!((norm - 1.0f32).abs() < 0.001f32, "Denormal vector detected");
+            }
+
+            let start = v * num_dims;
+            let end = start + num_dims;
+            data[start..end].copy_from_slice(vec);
+
+            true
+        })
+        .await
+        .unwrap();
+
+    let duration = Instant::now() - start;
+    println!(
+        "Loading duration {} s for {num_read} vectors",
+        duration.as_secs_f32()
+    );
+
+    chunk
 }
 
 #[cfg(test)]
