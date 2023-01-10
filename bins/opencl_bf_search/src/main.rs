@@ -2,14 +2,19 @@ mod vec_traits;
 mod vecgen;
 
 use memchunk::MemoryChunk;
-use ocl::{Buffer, Kernel, ProQue};
+use ocl::core::DeviceInfoResult;
+use ocl::{Buffer, Context, Device, Kernel, Platform, ProQue};
 use std::path::PathBuf;
 use std::time::Instant;
 use vecdb::VecDb;
 
 #[tokio::main]
 async fn main() {
-    let chunk = load_vectors::<0>().await;
+    #[cfg(debug_assertions)]
+    const K: usize = 10_000;
+    #[cfg(not(debug_assertions))]
+    const K: usize = 0;
+    let chunk = load_vectors::<K>().await;
     let first_vec = Vec::from(chunk.get_vec(0));
 
     let start = Instant::now();
@@ -19,6 +24,40 @@ async fn main() {
         vecs = chunk.num_vecs(),
         duration = (Instant::now() - start).as_secs_f32()
     );
+
+    // Default setup.
+    let platform = Platform::first().unwrap();
+    let device = Device::first(platform).unwrap();
+    let context = Context::builder()
+        .platform(platform)
+        .devices(device)
+        .build()
+        .unwrap();
+
+    // Check if the device supports the cl_khr_priority_queue extension
+    if let DeviceInfoResult::Extensions(extensions) =
+        device.info(ocl::enums::DeviceInfo::Extensions).unwrap()
+    {
+        if !extensions.contains("cl_khr_priority_queue") {
+            eprintln!("👎 Device does not support the cl_khr_priority_queue extension.");
+
+            /*
+            __kernel void priority_queue_kernel(__global float* dot_product_results,
+                                                __global int* priority_queue,
+                                                int num_elements, int k) {
+                __priority_queue(k) pq;
+                for (int i = 0; i < num_elements; i++) {
+                    pq.push(dot_product_results[i], i);
+                }
+                for (int i = 0; i < k; i++) {
+                    priority_queue[i] = pq.pop().value;
+                }
+            }
+             */
+        } else {
+            println!("🎉 Device support the cl_khr_priority_queue extension!");
+        }
+    }
 
     let q = ProQue::builder()
         .src(
