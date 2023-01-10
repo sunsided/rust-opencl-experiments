@@ -2,7 +2,7 @@ mod vec_traits;
 mod vecgen;
 
 use memchunk::MemoryChunk;
-use ocl::ProQue;
+use ocl::{Buffer, Kernel, ProQue, Queue};
 use ocl_stream::OCLStreamExecutor;
 use std::path::PathBuf;
 use std::time::Instant;
@@ -11,77 +11,64 @@ use vecdb::VecDb;
 #[tokio::main]
 async fn main() {
     let chunk = load_vectors().await;
-
     let first_vec = Vec::from(chunk.get_vec(0));
-
     let _reference = chunk.search_naive(&first_vec);
 
-    // create the ProQue
-    let pro_que = ProQue::builder()
+    let q = ProQue::builder()
         .src(
             "
-            __kernel void bench_int(const uint limit, __global int *NUMBERS) {
-                uint id = get_global_id(0);
-                int num = NUMBERS[id];
-                for (int i = 0; i < limit; i++) {
-                    num += i;
+            __kernel void dot_product(const __global float *matrix,
+                                     const __global float *vector,
+                                     __global float *result,
+                                     const int rows,
+                                     const int cols) {
+                int row = get_global_id(0);
+                float sum = 0;
+                for (int i = 0; i < cols; i++) {
+                    sum += matrix[row * cols + i] * vector[i];
                 }
-                NUMBERS[id] = num;
+                result[row] = sum;
             }",
         )
-        .dims(1u32)
         .build()
         .unwrap();
 
-    // create the executor
-    let stream_executor = OCLStreamExecutor::new(pro_que);
+    let mut result = vec![0.0; chunk.num_vecs()];
+    let matrix_buffer = Buffer::<f32>::builder()
+        .queue(q.queue().clone())
+        .len(chunk.num_vecs() * chunk.num_dims())
+        .build()
+        .unwrap();
+    let vector_buffer = Buffer::<f32>::builder()
+        .queue(q.queue().clone())
+        .len(chunk.num_dims())
+        .build()
+        .unwrap();
+    let result_buffer = Buffer::<f32>::builder()
+        .queue(q.queue().clone())
+        .len(chunk.num_vecs())
+        .build()
+        .unwrap();
 
-    // execute a closure that provides the results in the given stream
-    let mut stream = stream_executor.execute_unbounded(|ctx| {
-        let pro_que = ctx.pro_que();
-        let tx = ctx.sender();
-        let input_buffer = pro_que
-            .buffer_builder()
-            .len(100)
-            .fill_val(0i32)
-            .build()
-            .expect("building the buffer failed");
+    matrix_buffer.write(chunk.as_ref()).enq().unwrap();
+    vector_buffer.write(&first_vec).enq().unwrap();
 
-        let kernel = pro_que
-            .kernel_builder("bench_int")
-            .arg(100u32)
-            .arg(&input_buffer)
-            .global_work_size(100)
-            .build()
-            .expect("building the kernel failed");
-        unsafe {
-            kernel.enq().expect("enqueueing the kernel failed");
-        }
+    let kernel = Kernel::builder()
+        .program(&q.program())
+        .name("dot_product")
+        .queue(q.queue().clone())
+        .global_work_size(chunk.num_vecs())
+        .arg(&matrix_buffer)
+        .arg(&vector_buffer)
+        .arg(&result_buffer)
+        .arg(chunk.num_vecs() as i32)
+        .arg(chunk.num_dims() as i32)
+        .build()
+        .unwrap();
 
-        let mut result = vec![0i32; 100];
-        input_buffer
-            .read(&mut result)
-            .enq()
-            .expect("enqueueing the input buffer failed");
-
-        for num in result {
-            // send the results to the receiving thread
-            tx.send(num).expect("sending the value failed");
-        }
-
-        Ok(())
-    });
-
-    let mut count = 0;
-
-    // calculate the expected result values
-    let num = (99f32.powf(2.0) + 99f32) / 2f32;
-    // read the results from the stream
-    while let Ok(n) = stream.next() {
-        assert_eq!(n, num as i32);
-        count += 1;
-    }
-    assert_eq!(count, 100)
+    unsafe { kernel.enq().unwrap() };
+    result_buffer.read(&mut result).enq().unwrap();
+    println!("{:?}", result);
 }
 
 async fn load_vectors() -> MemoryChunk {

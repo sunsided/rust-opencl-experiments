@@ -124,6 +124,10 @@ impl MemoryChunk {
         self.data.len()
     }
 
+    pub fn num_vecs(&self) -> usize {
+        self.virt_num_vecs
+    }
+
     pub fn num_dims(&self) -> usize {
         self.num_dims
     }
@@ -131,12 +135,12 @@ impl MemoryChunk {
 
 impl AsRef<[f32]> for MemoryChunk {
     fn as_ref(&self) -> &[f32] {
-        &self.data
+        &self.data[..self.num_dims * self.virt_num_vecs]
     }
 }
 
 impl AsMut<[f32]> for MemoryChunk {
     fn as_mut(&mut self) -> &mut [f32] {
-        &mut self.data
+        &mut self.data[..self.num_dims * self.virt_num_vecs]
     }
 }
