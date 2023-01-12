@@ -2,7 +2,7 @@ mod opencl;
 mod vec_traits;
 mod vecgen;
 
-use crate::opencl::{build_dot_product_program, build_priority_queue_program};
+use crate::opencl::build_dot_topk_program;
 use memchunk::MemoryChunk;
 use ocl::{Buffer, Context, Device, Kernel, Platform, Queue};
 use std::path::PathBuf;
@@ -35,10 +35,10 @@ async fn main() {
         .build()
         .unwrap();
 
-    let dot_product = build_dot_product_program(device, &context).unwrap();
-    let _program = build_priority_queue_program(&device, &context);
+    let dot_topk = build_dot_topk_program(device, &context).unwrap();
 
-    let mut result = vec![0.0; chunk.num_vecs()];
+    let mut result = vec![0.0f32; chunk.num_vecs()];
+    let mut indexes = vec![0u32; chunk.num_vecs()];
 
     // Create three queues.
     let matrix_queue = Queue::new(&context, device, None).unwrap();
@@ -69,6 +69,14 @@ async fn main() {
         .build()
         .unwrap();
 
+    // Create buffer for the indexes
+    let index_buffer = Buffer::<u32>::builder()
+        .queue(result_queue.clone())
+        .flags(ocl::flags::MEM_WRITE_ONLY)
+        .len(chunk.num_vecs())
+        .build()
+        .unwrap();
+
     let start = Instant::now();
 
     matrix_buffer.cmd().write(chunk.as_ref()).enq().unwrap();
@@ -76,7 +84,7 @@ async fn main() {
 
     // Execute kernel using result_queue.
     let dot_product_kernel = Kernel::builder()
-        .program(&dot_product)
+        .program(&dot_topk)
         .name("dot_product")
         .queue(result_queue.clone())
         .global_work_size(chunk.num_vecs())
@@ -84,8 +92,8 @@ async fn main() {
         .arg(&matrix_buffer)
         .arg(&vector_buffer)
         .arg(&result_buffer)
-        .arg(chunk.num_vecs() as i32)
-        .arg(chunk.num_dims() as i32)
+        .arg(&index_buffer)
+        .arg(20)
         .build()
         .unwrap();
 
@@ -97,6 +105,11 @@ async fn main() {
     // Execute the kernel and read the first result from the device using result_queue.
     unsafe { dot_product_kernel.cmd().enq().unwrap() };
     result_buffer.cmd().read(&mut result).enq().unwrap();
+    index_buffer
+        .cmd()
+        .read(indexes.as_mut_slice())
+        .enq()
+        .unwrap();
 
     // Flush result_queue to make sure that the read operation has been sent to the device.
     result_queue.flush().unwrap();
