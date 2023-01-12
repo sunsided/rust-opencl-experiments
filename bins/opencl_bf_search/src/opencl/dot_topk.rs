@@ -1,25 +1,28 @@
 use ocl::builders::DeviceSpecifier;
 use ocl::{Context, Program};
 
-const DOT_PRODUCT_SOURCE: &'static str = "
-    __kernel void dot_topk(__global float* matrix, __global float* vector, __global float* results, __global uint* indexes, uint top_k) {
+const DOT_PRODUCT_SOURCE: &str = "
+    __kernel void dot_product_topk(__global float* matrix, __global float* vector, __global float* result, __global float* topk, __global uint* topk_idx, uint matrix_rows, uint matrix_cols, uint topk_size) {
         int gid = get_global_id(0);
-        float dot = 0.f;
-        for (int i = 0; i < get_global_size(1); i++) {
-            dot += matrix[gid*get_global_size(1) + i] * vector[i];
+        float dot_product = 0;
+        for (int i = 0; i < matrix_cols; i++) {
+            dot_product += matrix[gid * matrix_cols + i] * vector[i];
         }
-        results[gid] = dot;
-        indexes[gid] = gid;
+        result[gid] = dot_product;
+
+        // manual priority queue
+        if (gid < topk_size) {
+            topk[gid] = dot_product;
+            topk_idx[gid] = gid;
+        }
         barrier(CLK_GLOBAL_MEM_FENCE);
-        for (int i = 0; i < top_k; i++) {
-            if (gid == i) continue;
-            float cur_val = results[gid];
-            float cmp_val = results[i];
-            uint cur_index = indexes[gid];
-            uint cmp_index = indexes[i];
-            uint prev_val = atomic_cmpxchg(results + i, cmp_val, cur_val);
-            if (prev_val == cmp_val) {
-                atomic_min(indexes + i, cur_index);
+        for (int i = topk_size / 2; i > 0; i >>= 1) {
+            if (gid < i) {
+                if (dot_product > topk[gid + i]) {
+                    topk[gid + i] = dot_product;
+                    topk_idx[gid + i] = gid;
+                }
+                barrier(CLK_GLOBAL_MEM_FENCE);
             }
         }
     }";

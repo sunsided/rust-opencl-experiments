@@ -1,7 +1,7 @@
 use ocl::builders::DeviceSpecifier;
 use ocl::{Context, Program};
 
-const DOT_PRODUCT_SOURCE: &'static str = "
+const DOT_PRODUCT_SOURCE: &str = "
     __kernel void dot_product(const __global float *matrix,
                              const __global float *vector,
                              __global float *result,
