@@ -28,7 +28,15 @@ async fn main() {
 
     // Default setup.
     let platform = Platform::first().unwrap();
+    println!(
+        "Using platform {} with {}",
+        platform.name().unwrap(),
+        platform.version().unwrap()
+    );
+
     let device = Device::first(platform).unwrap();
+    println!("Using device {}", device.name().unwrap());
+
     let context = Context::builder()
         .platform(platform)
         .devices(device)
