@@ -91,6 +91,16 @@ async fn main() {
 
     unsafe { dot_product_kernel.cmd().enq().unwrap() };
     result_buffer.cmd().read(&mut result).enq().unwrap();
+
+    // Flush the matrix and vector queues to make sure that the write
+    // operations have been sent to the device
+    matrix_queue.flush().unwrap();
+    vector_queue.flush().unwrap();
+
+    // TODO: Write next matrix ...
+    // TODO: Write next vector ...
+
+    // Block on the result queue to make sure that the read operation has completed
     result_queue.finish().unwrap();
 
     println!(
