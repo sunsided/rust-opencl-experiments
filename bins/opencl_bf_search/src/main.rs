@@ -89,18 +89,23 @@ async fn main() {
         .build()
         .unwrap();
 
-    unsafe { dot_product_kernel.cmd().enq().unwrap() };
-    result_buffer.cmd().read(&mut result).enq().unwrap();
-
     // Flush the matrix and vector queues to make sure that the write
     // operations have been sent to the device
     matrix_queue.flush().unwrap();
     vector_queue.flush().unwrap();
 
+    // Execute the kernel and read the first result from the device using result_queue.
+    unsafe { dot_product_kernel.cmd().enq().unwrap() };
+    result_buffer.cmd().read(&mut result).enq().unwrap();
+
+    // Flush result_queue to make sure that the read operation has been sent to the device.
+    result_queue.flush().unwrap();
+
     // TODO: Write next matrix ...
     // TODO: Write next vector ...
 
-    // Block on the result queue to make sure that the read operation has completed
+    // Just to ensure we have everything set here in the single-matrix example, we now
+    // block on the result queue to make sure that the read operation has completed
     result_queue.finish().unwrap();
 
     println!(
@@ -158,12 +163,4 @@ async fn load_vectors<const SAMPLE_SIZE: usize>() -> MemoryChunk {
     );
 
     chunk
-}
-
-#[cfg(test)]
-mod test {
-    #[test]
-    fn it_works() {
-        assert!(true);
-    }
 }
