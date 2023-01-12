@@ -13,9 +13,13 @@ const DOT_PRODUCT_SOURCE: &'static str = "
         barrier(CLK_GLOBAL_MEM_FENCE);
         for (int i = 0; i < top_k; i++) {
             if (gid == i) continue;
-            if (results[gid] > results[i]) {
-                swap(results[gid], results[i]);
-                swap(indexes[gid], indexes[i]);
+            float cur_val = results[gid];
+            float cmp_val = results[i];
+            uint cur_index = indexes[gid];
+            uint cmp_index = indexes[i];
+            uint prev_val = atomic_cmpxchg(results + i, cmp_val, cur_val);
+            if (prev_val == cmp_val) {
+                atomic_min(indexes + i, cur_index);
             }
         }
     }";
