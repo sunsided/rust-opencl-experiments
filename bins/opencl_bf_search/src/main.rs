@@ -34,30 +34,7 @@ async fn main() {
         .build()
         .unwrap();
 
-    // Check if the device supports the cl_khr_priority_queue extension
-    if let DeviceInfoResult::Extensions(extensions) =
-        device.info(ocl::enums::DeviceInfo::Extensions).unwrap()
-    {
-        if !extensions.contains("cl_khr_priority_queue") {
-            eprintln!("👎 Device does not support the cl_khr_priority_queue extension.");
-
-            /*
-            __kernel void priority_queue_kernel(__global float* dot_product_results,
-                                                __global int* priority_queue,
-                                                int num_elements, int k) {
-                __priority_queue(k) pq;
-                for (int i = 0; i < num_elements; i++) {
-                    pq.push(dot_product_results[i], i);
-                }
-                for (int i = 0; i < k; i++) {
-                    priority_queue[i] = pq.pop().value;
-                }
-            }
-             */
-        } else {
-            println!("🎉 Device support the cl_khr_priority_queue extension!");
-        }
-    }
+    let _program = get_priority_queue_kernel(&device, &context);
 
     let dot_product = Program::builder()
         .src(
@@ -77,36 +54,6 @@ async fn main() {
         )
         .build(&context)
         .unwrap();
-
-    let priority_queue = Program::builder().src(
-        "
-        __kernel void priority_queue(__global float* dot_product_results, __global int* priority_queue,
-                                            __global int* index_queue, int num_elements, int k) {
-            int i = get_global_id(0);
-            if (i < k) {
-                priority_queue[i] = dot_product_results[i];
-                index_queue[i] = i;
-            } else if (dot_product_results[i] > priority_queue[0]) {
-                priority_queue[0] = dot_product_results[i];
-                index_queue[0] = i;
-            }
-            barrier(CLK_GLOBAL_MEM_FENCE);
-
-            for (int j = 0; j < (int)log2((float)k); j++) {
-                int parent = i >> (j + 1);
-                if (parent < k) {
-                    int left = (i >> j) | (1 << j);
-                    if (left < k) {
-                        int min_index = (priority_queue[left] < priority_queue[parent]) ? left : parent;
-                        priority_queue[parent] = priority_queue[min_index];
-                        index_queue[parent] = index_queue[min_index];
-                    }
-                }
-            }
-        }"
-    )
-    .build(&context)
-    .unwrap();
 
     let mut result = vec![0.0; chunk.num_vecs()];
 
@@ -156,6 +103,67 @@ async fn main() {
     );
 
     println!("{:?} ...", &result[..10]);
+}
+
+fn get_priority_queue_kernel(device: &Device, context: &Context) -> Option<Program> {
+    // Check if the device supports the cl_khr_priority_queue extension
+    match device.info(ocl::enums::DeviceInfo::Extensions).unwrap() {
+        DeviceInfoResult::Extensions(extensions) => {
+            if !extensions.contains("cl_khr_priority_queue") {
+                eprintln!("👎 Device does not support the cl_khr_priority_queue extension.");
+
+                let program = Program::builder().src(
+                        "
+        __kernel void priority_queue(__global float* dot_product_results, __global int* priority_queue,
+                                            __global int* index_queue, int num_elements, int k) {
+            int i = get_global_id(0);
+            if (i < k) {
+                priority_queue[i] = dot_product_results[i];
+                index_queue[i] = i;
+            } else if (dot_product_results[i] > priority_queue[0]) {
+                priority_queue[0] = dot_product_results[i];
+                index_queue[0] = i;
+            }
+            barrier(CLK_GLOBAL_MEM_FENCE);
+
+            for (int j = 0; j < (int)log2((float)k); j++) {
+                int parent = i >> (j + 1);
+                if (parent < k) {
+                    int left = (i >> j) | (1 << j);
+                    if (left < k) {
+                        int min_index = (priority_queue[left] < priority_queue[parent]) ? left : parent;
+                        priority_queue[parent] = priority_queue[min_index];
+                        index_queue[parent] = index_queue[min_index];
+                    }
+                }
+            }
+        }"
+                    )
+                        .build(&context)
+                        .unwrap();
+
+                Some(program)
+            } else {
+                println!("🎉 Device support the cl_khr_priority_queue extension!");
+                // TODO: Add kernel:
+                /*
+                __kernel void priority_queue_kernel(__global float* dot_product_results,
+                                                    __global int* priority_queue,
+                                                    int num_elements, int k) {
+                    __priority_queue(k) pq;
+                    for (int i = 0; i < num_elements; i++) {
+                        pq.push(dot_product_results[i], i);
+                    }
+                    for (int i = 0; i < k; i++) {
+                        priority_queue[i] = pq.pop().value;
+                    }
+                }
+                */
+                None
+            }
+        }
+        _ => None,
+    }
 }
 
 async fn load_vectors<const SAMPLE_SIZE: usize>() -> MemoryChunk {
