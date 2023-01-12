@@ -4,7 +4,7 @@ mod vecgen;
 
 use crate::opencl::{build_dot_product_program, build_priority_queue_program};
 use memchunk::MemoryChunk;
-use ocl::{Buffer, Context, Device, Kernel, Platform, Program, Queue};
+use ocl::{Buffer, Context, Device, Kernel, Platform, Queue};
 use std::path::PathBuf;
 use std::time::Instant;
 use vecdb::VecDb;
@@ -40,32 +40,45 @@ async fn main() {
 
     let mut result = vec![0.0; chunk.num_vecs()];
 
-    let queue = Queue::new(&context, device, None).unwrap();
+    // Create three queues.
+    let matrix_queue = Queue::new(&context, device, None).unwrap();
+    let vector_queue = Queue::new(&context, device, None).unwrap();
+    let result_queue = Queue::new(&context, device, None).unwrap();
 
+    // Write matrix data to the device using matrix_queue.
     let matrix_buffer = Buffer::<f32>::builder()
-        .queue(queue.clone())
+        .queue(matrix_queue.clone())
+        .flags(ocl::flags::MEM_READ_ONLY)
         .len(chunk.num_vecs() * chunk.num_dims())
         .build()
         .unwrap();
+
+    // Write vector data to the device using vector_queue.
     let vector_buffer = Buffer::<f32>::builder()
-        .queue(queue.clone())
+        .queue(vector_queue.clone())
+        .flags(ocl::flags::MEM_READ_ONLY)
         .len(chunk.num_dims())
         .build()
         .unwrap();
+
+    // Write result data to the device using result_queue.
     let result_buffer = Buffer::<f32>::builder()
-        .queue(queue.clone())
+        .queue(result_queue.clone())
+        .flags(ocl::flags::MEM_WRITE_ONLY)
         .len(chunk.num_vecs())
         .build()
         .unwrap();
 
     let start = Instant::now();
-    matrix_buffer.write(chunk.as_ref()).enq().unwrap();
-    vector_buffer.write(&first_vec).enq().unwrap();
 
+    matrix_buffer.cmd().write(chunk.as_ref()).enq().unwrap();
+    vector_buffer.cmd().write(&first_vec).enq().unwrap();
+
+    // Execute kernel using result_queue.
     let dot_product_kernel = Kernel::builder()
         .program(&dot_product)
         .name("dot_product")
-        .queue(queue.clone())
+        .queue(result_queue.clone())
         .global_work_size(chunk.num_vecs())
         // .local_work_size(79)
         .arg(&matrix_buffer)
@@ -76,9 +89,9 @@ async fn main() {
         .build()
         .unwrap();
 
-    unsafe { dot_product_kernel.enq().unwrap() };
-    result_buffer.read(&mut result).enq().unwrap();
-    queue.finish().unwrap();
+    unsafe { dot_product_kernel.cmd().enq().unwrap() };
+    result_buffer.cmd().read(&mut result).enq().unwrap();
+    result_queue.finish().unwrap();
 
     println!(
         "Duration processing {vecs} vectors in OpenCL (full roundtrip): {duration} s",
