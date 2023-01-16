@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use ocl::builders::DeviceSpecifier;
 use ocl::{Context, Program};
 

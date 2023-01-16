@@ -24,11 +24,17 @@ async fn main() {
     println!("Using {} vectors.", chunk.num_vecs());
 
     let start = Instant::now();
-    let _reference = chunk.search_naive(&first_vec);
+    let reference = chunk.search_reference(&first_vec);
     println!(
         "Duration processing {vecs} vectors on CPU: {duration} s",
         vecs = chunk.num_vecs(),
         duration = (Instant::now() - start).as_secs_f32()
+    );
+
+    println!("{:?} ...", &reference[..10]);
+    println!(
+        "{:?} ...",
+        &reference[chunk.num_dims()..(chunk.num_dims() + 10)]
     );
 
     // Default setup.
@@ -81,16 +87,18 @@ async fn main() {
         .unwrap();
 
     // Execute kernel using result_queue.
+    const P: usize = 4;
+
     let dot_product_kernel = Kernel::builder()
         .program(&dot_product)
         .name("dot_product")
         .queue(result_queue.clone())
-        .global_work_size(chunk.num_vecs())
-        //.local_work_size(16)
-        .local_work_size(4)
+        .global_work_size([chunk.num_vecs(), P])
+        .local_work_size([64, P])
         .arg(&matrix_buffer)
         .arg(&vector_buffer)
         .arg(&result_buffer)
+        .arg_local::<f32>(64 * (P + 1))
         .arg(chunk.num_vecs() as u32)
         .arg(chunk.num_dims() as u32)
         .build()

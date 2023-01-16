@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use ocl::core::DeviceInfoResult;
 use ocl::{Context, Device, Program};
 

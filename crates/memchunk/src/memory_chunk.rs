@@ -51,6 +51,29 @@ impl MemoryChunk {
         }
     }
 
+    pub fn search_reference(&self, query: &[f32]) -> Vec<f32> {
+        let num_vecs = self.virt_num_vecs;
+        let num_dims = self.num_dims;
+
+        let mut results = vec![0.0; num_vecs];
+
+        let data = &self.data;
+        for v in 0..num_vecs {
+            let start_index = v * num_dims;
+
+            let mut sum = 0.0;
+            for d in 0..num_dims {
+                let r = data[start_index + d];
+                let q = query[d];
+                sum += r * q;
+            }
+
+            results[v] = sum;
+        }
+
+        results
+    }
+
     pub fn search_naive(&self, query: &[f32]) -> [Entry; 10] {
         let num_vecs = self.virt_num_vecs;
         let num_dims = self.num_dims;
