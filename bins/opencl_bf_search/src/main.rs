@@ -45,7 +45,7 @@ async fn main() {
         .build()
         .unwrap();
 
-    let dot_topk_product = build_dot_topk_program(device, &context).unwrap();
+    let dot_product = build_dot_product_program(device, &context).unwrap();
 
     // Create three queues.
     let matrix_queue = Queue::new(&context, device, None).unwrap();
@@ -72,34 +72,8 @@ async fn main() {
     // Write result data to the device using result_queue.
     let result_buffer = Buffer::<f32>::builder()
         .queue(result_queue.clone())
-        .flags(ocl::flags::MEM_HOST_NO_ACCESS | ocl::flags::MEM_READ_WRITE)
+        .flags(ocl::flags::MEM_WRITE_ONLY | ocl::flags::MEM_HOST_READ_ONLY)
         .len(chunk.num_vecs())
-        .build()
-        .unwrap();
-
-    const TOPK_SIZE: usize = 10;
-    let mut topk = vec![f32::MIN; TOPK_SIZE];
-    let mut topk_idx = vec![u32::MAX; TOPK_SIZE];
-
-    // Create buffer for the top-K values.
-    let topk_buffer = Buffer::<f32>::builder()
-        .queue(result_queue.clone())
-        .len(TOPK_SIZE)
-        .flags(
-            /*ocl::flags::MEM_HOST_READ_ONLY |*/ ocl::flags::MEM_READ_WRITE,
-        )
-        .copy_host_slice(&topk) // TODO: How to use this multiple times?
-        .build()
-        .unwrap();
-
-    // Create buffer for the top-K indexes.
-    let topk_idx_buffer = Buffer::<u32>::builder()
-        .queue(result_queue.clone())
-        .len(TOPK_SIZE)
-        .flags(
-            /*ocl::flags::MEM_HOST_READ_ONLY |*/ ocl::flags::MEM_READ_WRITE,
-        )
-        .copy_host_slice(&topk_idx) // TODO: How to use this multiple times?
         .build()
         .unwrap();
 
@@ -110,19 +84,15 @@ async fn main() {
 
     // Execute kernel using result_queue.
     let dot_product_kernel = Kernel::builder()
-        .program(&dot_topk_product)
-        .name("dot_product_topk")
+        .program(&dot_product)
+        .name("dot_product")
         .queue(result_queue.clone())
         .global_work_size(chunk.num_vecs())
         // .local_work_size(79)
         .arg(&matrix_buffer)
         .arg(&vector_buffer)
         .arg(&result_buffer)
-        .arg(&topk_buffer)
-        .arg(&topk_idx_buffer)
-        .arg(chunk.num_vecs() as u32)
         .arg(chunk.num_dims() as u32)
-        .arg(TOPK_SIZE as u32)
         .build()
         .unwrap();
 
@@ -134,8 +104,8 @@ async fn main() {
     // Execute the dot product kernel.
     unsafe { dot_product_kernel.cmd().enq().unwrap() };
 
-    topk_buffer.cmd().read(&mut topk).enq().unwrap();
-    topk_idx_buffer.cmd().read(&mut topk_idx).enq().unwrap();
+    let mut results = vec![f32::NAN; chunk.num_vecs()];
+    result_buffer.cmd().read(&mut results).enq().unwrap();
 
     // Flush result_queue to make sure that the read operation has been sent to the device.
     result_queue.flush().unwrap();
@@ -153,7 +123,7 @@ async fn main() {
         duration = (Instant::now() - start).as_secs_f32()
     );
 
-    println!("{:?} ...", &topk);
+    println!("{:?} ...", &results[..10]);
 }
 
 async fn load_vectors<const SAMPLE_SIZE: usize>() -> MemoryChunk {
