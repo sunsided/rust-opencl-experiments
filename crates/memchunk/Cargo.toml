@@ -6,4 +6,5 @@ rust-version = "1.66"
 
 [dependencies]
 abstractions = { path = "../../crates/abstractions" }
+transpose = "0.2.2"
 unroll = "0.1.5"

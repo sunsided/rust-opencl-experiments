@@ -86,7 +86,8 @@ async fn main() {
         .name("dot_product")
         .queue(result_queue.clone())
         .global_work_size(chunk.num_vecs())
-        // .local_work_size(16)
+        //.local_work_size(16)
+        .local_work_size(4)
         .arg(&matrix_buffer)
         .arg(&vector_buffer)
         .arg(&result_buffer)
@@ -95,9 +96,11 @@ async fn main() {
         .build()
         .unwrap();
 
+    let transposed = chunk.as_transposed();
+
     let start = Instant::now();
 
-    matrix_buffer.cmd().write(chunk.as_ref()).enq().unwrap();
+    matrix_buffer.cmd().write(&transposed).enq().unwrap();
     vector_buffer.cmd().write(&first_vec).enq().unwrap();
 
     // Flush the matrix and vector queues to make sure that the write

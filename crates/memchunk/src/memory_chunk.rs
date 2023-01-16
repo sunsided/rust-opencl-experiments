@@ -124,12 +124,22 @@ impl MemoryChunk {
         self.num_dims * self.virt_num_vecs
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     pub fn num_vecs(&self) -> usize {
         self.virt_num_vecs
     }
 
     pub fn num_dims(&self) -> usize {
         self.num_dims
+    }
+
+    pub fn as_transposed(&self) -> Vec<f32> {
+        let mut vec = Vec::from(self.as_ref());
+        transpose::transpose(self.as_ref(), &mut vec, self.num_dims, self.virt_num_vecs);
+        vec
     }
 }
 
