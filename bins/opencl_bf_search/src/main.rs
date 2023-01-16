@@ -17,8 +17,11 @@ async fn main() {
     const K: usize = 10_000;
     #[cfg(not(debug_assertions))]
     const K: usize = 0;
-    let chunk = load_vectors::<K>().await;
+    let mut chunk = load_vectors::<K>().await;
     let first_vec = Vec::from(chunk.get_vec(0));
+
+    chunk.use_num_vecs((chunk.num_vecs() & !(32 - 1)).into());
+    println!("Using {} vectors.", chunk.num_vecs());
 
     let start = Instant::now();
     let _reference = chunk.search_naive(&first_vec);
@@ -92,6 +95,7 @@ async fn main() {
         .arg(&matrix_buffer)
         .arg(&vector_buffer)
         .arg(&result_buffer)
+        .arg(chunk.num_vecs() as u32)
         .arg(chunk.num_dims() as u32)
         .build()
         .unwrap();
