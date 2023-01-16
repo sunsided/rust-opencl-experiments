@@ -91,7 +91,7 @@ async fn main() {
         .name("dot_product")
         .queue(result_queue.clone())
         .global_work_size(chunk.num_vecs())
-        // .local_work_size(79)
+        .local_work_size(16)
         .arg(&matrix_buffer)
         .arg(&vector_buffer)
         .arg(&result_buffer)
