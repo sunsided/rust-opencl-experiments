@@ -164,6 +164,13 @@ impl MemoryChunk {
         transpose::transpose(self.as_ref(), &mut vec, self.num_dims, self.virt_num_vecs);
         vec
     }
+
+    pub fn double(&mut self) {
+        self.num_vecs *= 2;
+        self.virt_num_vecs *= 2;
+        let mut cloned = self.data.clone();
+        self.data.append(&mut cloned);
+    }
 }
 
 impl AsRef<[f32]> for MemoryChunk {
