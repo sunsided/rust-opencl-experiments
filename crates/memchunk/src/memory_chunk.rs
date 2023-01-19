@@ -58,7 +58,7 @@ impl MemoryChunk {
         let mut results = vec![0.0; num_vecs];
 
         let data = &self.data;
-        for v in 0..num_vecs {
+        for (v, result) in results.iter_mut().enumerate() {
             let start_index = v * num_dims;
 
             let mut sum = 0.0;
@@ -68,7 +68,7 @@ impl MemoryChunk {
                 sum += r * q;
             }
 
-            results[v] = sum;
+            *result = sum;
         }
 
         results
@@ -81,7 +81,7 @@ impl MemoryChunk {
         let mut results = vec![0.0; num_vecs];
 
         let data = &self.data;
-        for v in 0..num_vecs {
+        for (v, result) in results.iter_mut().enumerate() {
             let start_index = v * num_dims;
 
             let mut sum = 0.0;
@@ -91,11 +91,10 @@ impl MemoryChunk {
                 sum += r * q;
             }
 
-            results[v] = sum;
+            *result = sum;
         }
 
-        let topk = topk(&mut results);
-        topk
+        topk(&mut results)
     }
 
     pub fn search_unrolled<const UNROLL_FACTOR: usize>(&self, query: &[f32]) -> [Entry; 10] {
@@ -105,15 +104,15 @@ impl MemoryChunk {
         let mut results = vec![0.0; num_vecs];
 
         let data = &self.data;
-        for v in 0..num_vecs {
+        for (v, result) in results.iter_mut().enumerate() {
             let start_index = v * num_dims;
 
             let mut sum = [0.0; UNROLL_FACTOR];
             for d in (0..num_dims).step_by(UNROLL_FACTOR) {
-                unrolled_dots::<UNROLL_FACTOR>(&query, &data, start_index + d, d, &mut sum);
+                unrolled_dots::<UNROLL_FACTOR>(query, data, start_index + d, d, &mut sum);
             }
 
-            results[v] = sum.iter().sum();
+            *result = sum.iter().sum();
         }
 
         let topk = topk(&mut results);
