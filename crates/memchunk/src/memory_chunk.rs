@@ -20,7 +20,7 @@ impl MemoryChunk {
 
         let num_elems = num_vectors * num_dimensions;
         let num_bytes = num_elems * std::mem::size_of::<f32>();
-        let chunk = Memory::allocate(num_bytes, true, true).expect("memory allocation failed");
+        let chunk = Memory::allocate(num_bytes, false, true).expect("memory allocation failed");
 
         Self {
             data: chunk,
@@ -157,7 +157,8 @@ impl MemoryChunk {
 
         let num_elems = self.num_dims * self.num_vecs;
         let num_bytes = num_elems * std::mem::size_of::<f32>();
-        let mut chunk = Memory::allocate(num_bytes, true, true).expect("memory allocation failed");
+        let mut chunk =
+            Memory::allocate(num_bytes, false, false).expect("memory allocation failed");
 
         let src: &[f32] = self.data.as_ref();
         let dest: &mut [f32] = chunk.as_mut();
