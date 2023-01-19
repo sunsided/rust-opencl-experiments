@@ -6,5 +6,6 @@ rust-version = "1.66"
 
 [dependencies]
 abstractions = { path = "../../crates/abstractions" }
+alloc-madvise = { version = "0.3.0", default-features = false }
 transpose = "0.2.2"
 unroll = "0.1.5"
