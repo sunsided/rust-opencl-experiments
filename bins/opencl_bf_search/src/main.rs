@@ -2,9 +2,7 @@ mod opencl;
 mod vec_traits;
 mod vecgen;
 
-use crate::opencl::{
-    build_dot_product_program, build_dot_topk_program, build_priority_queue_program,
-};
+use crate::opencl::build_dot_product_program;
 use memchunk::MemoryChunk;
 use ocl::{Buffer, Context, Device, Kernel, Platform, Queue};
 use std::path::PathBuf;
@@ -20,15 +18,24 @@ async fn main() {
     let mut chunk = load_vectors::<K>().await;
     let first_vec = Vec::from(chunk.get_vec(0));
 
+    chunk.double();
+
     chunk.use_num_vecs((chunk.num_vecs() & !(32 - 1)).into());
     println!("Using {} vectors.", chunk.num_vecs());
 
     let start = Instant::now();
-    let _reference = chunk.search_naive(&first_vec);
+    let reference = chunk.search_reference(&first_vec);
+    let duration_cpu = (Instant::now() - start).as_secs_f32();
     println!(
         "Duration processing {vecs} vectors on CPU: {duration} s",
         vecs = chunk.num_vecs(),
-        duration = (Instant::now() - start).as_secs_f32()
+        duration = duration_cpu
+    );
+
+    println!("{:?} ...", &reference[..10]);
+    println!(
+        "{:?} ...",
+        &reference[chunk.num_dims()..(chunk.num_dims() + 10)]
     );
 
     // Default setup.
@@ -81,23 +88,30 @@ async fn main() {
         .unwrap();
 
     // Execute kernel using result_queue.
+    const P: usize = 16;
+
     let dot_product_kernel = Kernel::builder()
         .program(&dot_product)
         .name("dot_product")
         .queue(result_queue.clone())
-        .global_work_size(chunk.num_vecs())
-        // .local_work_size(16)
+        .global_work_size([chunk.num_vecs(), P])
+        .local_work_size([32, P])
         .arg(&matrix_buffer)
         .arg(&vector_buffer)
         .arg(&result_buffer)
+        .arg_local::<f32>(32 * (P + 1))
         .arg(chunk.num_vecs() as u32)
         .arg(chunk.num_dims() as u32)
         .build()
         .unwrap();
 
+    println!("Transposing matrix ...");
+    let transposed = chunk.as_transposed();
+
+    println!("Processing using OpenCL ...");
     let start = Instant::now();
 
-    matrix_buffer.cmd().write(chunk.as_ref()).enq().unwrap();
+    matrix_buffer.cmd().write(&transposed).enq().unwrap();
     vector_buffer.cmd().write(&first_vec).enq().unwrap();
 
     // Flush the matrix and vector queues to make sure that the write
@@ -106,6 +120,7 @@ async fn main() {
     vector_queue.flush().unwrap();
 
     // Execute the dot product kernel.
+    let start_kernel = Instant::now();
     unsafe { dot_product_kernel.cmd().enq().unwrap() };
 
     let mut results = vec![f32::NAN; chunk.num_vecs()];
@@ -121,10 +136,15 @@ async fn main() {
     // block on the result queue to make sure that the read operation has completed
     result_queue.finish().unwrap();
 
+    let duration_ocl = (Instant::now() - start).as_secs_f32();
+    let duration_ocl_kernel = (Instant::now() - start_kernel).as_secs_f32();
     println!(
-        "Duration processing {vecs} vectors in OpenCL (full roundtrip): {duration} s",
+        "Duration processing {vecs} vectors in OpenCL (full roundtrip): {duration} s (x{ratio}), kernel only: {duration_kernel} s (x{ratio_kernel})",
         vecs = chunk.num_vecs(),
-        duration = (Instant::now() - start).as_secs_f32()
+        duration = duration_ocl,
+        ratio = duration_cpu / duration_ocl,
+        duration_kernel = duration_ocl_kernel,
+        ratio_kernel = duration_cpu / duration_ocl_kernel,
     );
 
     println!("{:?} ...", &results[..10]);
