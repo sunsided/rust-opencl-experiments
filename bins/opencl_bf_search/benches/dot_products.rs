@@ -1,7 +1,7 @@
 use criterion::Criterion;
 use criterion::{criterion_group, criterion_main};
 use criterion::{BenchmarkId, Throughput};
-use memchunk::MemoryChunk;
+use memchunk::AnySizeMemoryChunk;
 use std::hint::black_box;
 use std::path::PathBuf;
 use vecdb::VecDb;
@@ -44,7 +44,7 @@ fn from_elem(c: &mut Criterion) {
     group.finish();
 }
 
-async fn load_vectors(sample_size: usize) -> MemoryChunk {
+async fn load_vectors(sample_size: usize) -> AnySizeMemoryChunk {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("..")
         .join("..")
@@ -61,7 +61,7 @@ async fn load_vectors(sample_size: usize) -> MemoryChunk {
     })
     .into();
 
-    let mut chunk = MemoryChunk::new(sample_size, db.num_dimensions);
+    let mut chunk = AnySizeMemoryChunk::new(sample_size, db.num_dimensions);
     let data = chunk.as_mut();
 
     println!("Loading {sample_size} elements from vector database ...");

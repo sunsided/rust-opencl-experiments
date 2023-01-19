@@ -3,14 +3,14 @@ use abstractions::{NumDimensions, NumVectors};
 use alloc_madvise::Memory;
 
 #[derive(Debug)]
-pub struct MemoryChunk {
+pub struct AnySizeMemoryChunk {
     num_vecs: usize,
     virt_num_vecs: usize,
     num_dims: usize,
     data: Memory,
 }
 
-impl MemoryChunk {
+impl AnySizeMemoryChunk {
     pub fn new(num_vectors: NumVectors, num_dimensions: NumDimensions) -> Self {
         assert_eq!(
             *num_dimensions % 16,
@@ -169,14 +169,14 @@ impl MemoryChunk {
     }
 }
 
-impl AsRef<[f32]> for MemoryChunk {
+impl AsRef<[f32]> for AnySizeMemoryChunk {
     fn as_ref(&self) -> &[f32] {
         let data: &[f32] = self.data.as_ref();
         &data[..self.num_dims * self.virt_num_vecs]
     }
 }
 
-impl AsMut<[f32]> for MemoryChunk {
+impl AsMut<[f32]> for AnySizeMemoryChunk {
     fn as_mut(&mut self) -> &mut [f32] {
         let data: &mut [f32] = self.data.as_mut();
         &mut data[..self.num_dims * self.virt_num_vecs]
