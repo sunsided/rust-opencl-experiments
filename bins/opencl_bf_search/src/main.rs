@@ -4,7 +4,7 @@ mod vecgen;
 
 use crate::opencl::build_dot_product_program;
 use memchunk::MemoryChunk;
-use ocl::{Buffer, Context, Device, Kernel, Platform, Queue};
+use ocl::{Buffer, Context, Device, Kernel, MemFlags, Platform, Queue};
 use std::path::PathBuf;
 use std::time::Instant;
 use vecdb::VecDb;
@@ -66,7 +66,7 @@ async fn main() {
     // Write matrix data to the device using matrix_queue.
     let matrix_buffer = Buffer::<f32>::builder()
         .queue(matrix_queue.clone())
-        .flags(ocl::flags::MEM_READ_ONLY | ocl::flags::MEM_HOST_WRITE_ONLY)
+        .flags(MemFlags::new().read_only().host_write_only())
         .len(chunk.num_vecs() * chunk.num_dims())
         .build()
         .unwrap();
@@ -74,7 +74,7 @@ async fn main() {
     // Write vector data to the device using vector_queue.
     let vector_buffer = Buffer::<f32>::builder()
         .queue(vector_queue.clone())
-        .flags(ocl::flags::MEM_READ_ONLY | ocl::flags::MEM_HOST_WRITE_ONLY)
+        .flags(MemFlags::new().read_only().host_write_only())
         .len(chunk.num_dims())
         .build()
         .unwrap();
@@ -82,7 +82,7 @@ async fn main() {
     // Write result data to the device using result_queue.
     let result_buffer = Buffer::<f32>::builder()
         .queue(result_queue.clone())
-        .flags(ocl::flags::MEM_WRITE_ONLY | ocl::flags::MEM_HOST_READ_ONLY)
+        .flags(MemFlags::new().write_only().host_read_only())
         .len(chunk.num_vecs())
         .build()
         .unwrap();
