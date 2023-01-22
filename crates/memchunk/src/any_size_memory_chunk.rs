@@ -1,4 +1,3 @@
-use crate::topk::{topk, Entry};
 use abstractions::{NumDimensions, NumVectors};
 use alloc_madvise::Memory;
 
@@ -34,90 +33,6 @@ impl AnySizeMemoryChunk {
         self.virt_num_vecs = match *num_vecs {
             0 => self.num_vecs,
             x => x.min(self.data.len()),
-        }
-    }
-
-    pub fn search_reference(&self, query: &[f32]) -> Vec<f32> {
-        let num_vecs = self.virt_num_vecs;
-        let num_dims = self.num_dims;
-
-        let mut results = vec![0.0; num_vecs];
-
-        let data: &[f32] = self.data.as_ref();
-        for (v, result) in results.iter_mut().enumerate() {
-            let start_index = v * num_dims;
-
-            let mut sum = 0.0;
-            for d in 0..num_dims {
-                let r = data[start_index + d];
-                let q = query[d];
-                sum += r * q;
-            }
-
-            *result = sum;
-        }
-
-        results
-    }
-
-    pub fn search_naive(&self, query: &[f32]) -> [Entry; 10] {
-        let num_vecs = self.virt_num_vecs;
-        let num_dims = self.num_dims;
-
-        let mut results = vec![0.0; num_vecs];
-
-        let data: &[f32] = self.data.as_ref();
-        for (v, result) in results.iter_mut().enumerate() {
-            let start_index = v * num_dims;
-
-            let mut sum = 0.0;
-            for d in 0..num_dims {
-                let r = data[start_index + d];
-                let q = query[d];
-                sum += r * q;
-            }
-
-            *result = sum;
-        }
-
-        topk(&mut results)
-    }
-
-    pub fn search_unrolled<const UNROLL_FACTOR: usize>(&self, query: &[f32]) -> [Entry; 10] {
-        let num_vecs = self.virt_num_vecs;
-        let num_dims = self.num_dims;
-
-        let mut results = vec![0.0; num_vecs];
-
-        let data: &[f32] = self.data.as_ref();
-        for (v, result) in results.iter_mut().enumerate() {
-            let start_index = v * num_dims;
-
-            let mut sum = [0.0; UNROLL_FACTOR];
-            for d in (0..num_dims).step_by(UNROLL_FACTOR) {
-                unrolled_dots::<UNROLL_FACTOR>(query, data, start_index + d, d, &mut sum);
-            }
-
-            *result = sum.iter().sum();
-        }
-
-        let topk = topk(&mut results);
-        return topk;
-
-        #[inline(always)]
-        #[unroll::unroll_for_loops]
-        fn unrolled_dots<const UNROLL_FACTOR: usize>(
-            query: &[f32],
-            data: &[f32],
-            start_index: usize,
-            d: usize,
-            sum: &mut [f32; UNROLL_FACTOR],
-        ) {
-            for unroll in 0..UNROLL_FACTOR {
-                let r = data[start_index + unroll];
-                let q = query[d + unroll];
-                sum[unroll] += r * q;
-            }
         }
     }
 

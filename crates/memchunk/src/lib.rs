@@ -5,4 +5,4 @@ mod memory_view;
 mod topk;
 
 pub use any_size_memory_chunk::AnySizeMemoryChunk;
-pub use dot_product::{DotProduct, ReferenceDotProduct};
+pub use dot_product::{DotProduct, ReferenceDotProduct, ReferenceDotProductUnrolled};
