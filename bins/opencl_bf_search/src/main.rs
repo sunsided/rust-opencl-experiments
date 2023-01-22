@@ -1,8 +1,10 @@
+mod cli;
 mod opencl;
 mod vec_traits;
 mod vecgen;
 
-use crate::opencl::build_dot_product_program;
+use crate::cli::match_cli_arguments;
+use crate::opencl::{build_dot_product_program, ocl_print_platforms};
 use memchunk::MemoryChunk;
 use ocl::{Buffer, Context, Device, Kernel, MemFlags, Platform, Queue};
 use std::path::PathBuf;
@@ -11,11 +13,22 @@ use vecdb::VecDb;
 
 #[tokio::main]
 async fn main() {
+    let matches = match_cli_arguments();
+
+    if matches.get_flag("ocl-list-platforms") {
+        ocl_print_platforms();
+        std::process::exit(0);
+    }
+
+    let db_file = matches
+        .get_one("vector-db")
+        .expect("input argument missing");
+
     #[cfg(debug_assertions)]
     const K: usize = 10_000;
     #[cfg(not(debug_assertions))]
     const K: usize = 0;
-    let mut chunk = load_vectors::<K>().await;
+    let mut chunk = load_vectors::<K>(db_file).await;
     let first_vec = Vec::from(chunk.get_vec(0));
 
     chunk.double();
@@ -39,7 +52,7 @@ async fn main() {
     );
 
     // Default setup.
-    let platform = Platform::first().unwrap();
+    let platform = Platform::list()[1];
     println!(
         "Using platform {} with {}",
         platform.name().unwrap(),
@@ -88,6 +101,7 @@ async fn main() {
         .unwrap();
 
     // Execute kernel using result_queue.
+    const X: usize = 16;
     const P: usize = 16;
 
     let dot_product_kernel = Kernel::builder()
@@ -95,11 +109,11 @@ async fn main() {
         .name("dot_product")
         .queue(result_queue.clone())
         .global_work_size([chunk.num_vecs(), P])
-        .local_work_size([32, P])
+        .local_work_size([X, P])
         .arg(&matrix_buffer)
         .arg(&vector_buffer)
         .arg(&result_buffer)
-        .arg_local::<f32>(32 * (P + 1))
+        .arg_local::<f32>(X * (P + 1))
         .arg(chunk.num_vecs() as u32)
         .arg(chunk.num_dims() as u32)
         .build()
@@ -163,10 +177,8 @@ async fn main() {
     );
 }
 
-async fn load_vectors<const SAMPLE_SIZE: usize>() -> MemoryChunk {
-    let mut db = VecDb::open_read(PathBuf::from("vectors.bin"))
-        .await
-        .unwrap();
+async fn load_vectors<const SAMPLE_SIZE: usize>(db_file: &PathBuf) -> MemoryChunk {
+    let mut db = VecDb::open_read(db_file).await.unwrap();
 
     let start = Instant::now();
 
