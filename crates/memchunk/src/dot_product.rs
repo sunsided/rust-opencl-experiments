@@ -1,4 +1,5 @@
 use abstractions::{NumDimensions, NumVectors};
+use rayon::prelude::*;
 
 pub trait DotProduct {
     fn dot_product(
@@ -13,6 +14,9 @@ pub trait DotProduct {
 
 #[derive(Default)]
 pub struct ReferenceDotProduct {}
+
+#[derive(Default)]
+pub struct ReferenceDotProductParallel {}
 
 #[derive(Default)]
 pub struct ReferenceDotProductUnrolled<const UNROLL_FACTOR: usize = 8> {}
@@ -41,13 +45,50 @@ impl DotProduct for ReferenceDotProduct {
         for (v, result) in results.iter_mut().enumerate() {
             let start_index = v * num_dims;
 
-            let mut sum = query
+            let sum = query
                 .iter()
                 .zip(&data[start_index..])
                 .fold(0.0, |sum, (&q, &r)| sum + r * q);
 
             *result = sum;
         }
+    }
+}
+
+impl DotProduct for ReferenceDotProductParallel {
+    fn dot_product(
+        &self,
+        query: &[f32],
+        data: &[f32],
+        num_dims: NumDimensions,
+        num_vecs: NumVectors,
+        results: &mut [f32],
+    ) {
+        let num_vecs = num_vecs.into_inner();
+        let num_dims = num_dims.into_inner();
+
+        debug_assert_eq!(query.len(), num_dims, "query vector dimension mismatch");
+        debug_assert_eq!(results.len(), num_vecs, "result vector dimension mismatch");
+        debug_assert_eq!(
+            data.len(),
+            num_vecs * num_dims,
+            "data buffer dimension mismatch"
+        );
+
+        let data: &[f32] = data.as_ref();
+        results
+            .par_iter_mut()
+            .enumerate()
+            .for_each(move |(v, result)| {
+                let start_index = v * num_dims;
+
+                let sum = query
+                    .iter()
+                    .zip(&data[start_index..])
+                    .fold(0.0, |sum, (&q, &r)| sum + r * q);
+
+                *result = sum;
+            });
     }
 }
 

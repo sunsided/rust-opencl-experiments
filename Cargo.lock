@@ -954,6 +954,7 @@ version = "0.1.0"
 dependencies = [
  "abstractions",
  "alloc-madvise",
+ "rayon",
  "transpose",
  "unroll",
 ]

@@ -7,7 +7,7 @@ use crate::cli::match_cli_arguments;
 use crate::opencl::{
     build_dot_product_program, get_opencl_selection, ocl_print_platforms, OpenClDeviceSelection,
 };
-use memchunk::{AnySizeMemoryChunk, DotProduct, ReferenceDotProduct};
+use memchunk::{AnySizeMemoryChunk, DotProduct, ReferenceDotProductParallel};
 use ocl::{Buffer, Context, Kernel, MemFlags, Queue};
 use std::path::PathBuf;
 use std::time::Instant;
@@ -42,7 +42,7 @@ async fn main() {
     chunk.use_num_vecs((chunk.num_vecs().into_inner() & !(32 - 1)).into());
     println!("Using {} vectors.", chunk.num_vecs());
 
-    let reference_algo = ReferenceDotProduct::default();
+    let reference_algo = ReferenceDotProductParallel::default();
     let mut reference = vec![0.0; chunk.num_vecs().into_inner()];
 
     let start = Instant::now();
