@@ -41,11 +41,10 @@ impl DotProduct for ReferenceDotProduct {
         for (v, result) in results.iter_mut().enumerate() {
             let start_index = v * num_dims;
 
-            let mut sum = 0.0;
-            for (d, &q) in query.iter().enumerate() {
-                let r = data[start_index + d];
-                sum += r * q;
-            }
+            let mut sum = query
+                .iter()
+                .zip(&data[start_index..])
+                .fold(0.0, |sum, (&q, &r)| sum + r * q);
 
             *result = sum;
         }
