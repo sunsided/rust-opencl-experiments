@@ -1,8 +1,12 @@
+mod cli;
 mod opencl;
 mod vec_traits;
 mod vecgen;
 
-use crate::opencl::build_dot_product_program;
+use crate::cli::match_cli_arguments;
+use crate::opencl::{
+    build_dot_product_program, get_opencl_selection, ocl_print_platforms, OpenClDeviceSelection,
+};
 use memchunk::MemoryChunk;
 use ocl::{Buffer, Context, Device, Kernel, MemFlags, Platform, Queue};
 use std::path::PathBuf;
@@ -11,15 +15,30 @@ use vecdb::VecDb;
 
 #[tokio::main]
 async fn main() {
-    #[cfg(debug_assertions)]
-    const K: usize = 10_000;
-    #[cfg(not(debug_assertions))]
-    const K: usize = 0;
-    let mut chunk = load_vectors::<K>().await;
+    let matches = match_cli_arguments();
+
+    if matches.get_flag("ocl-list-platforms") {
+        ocl_print_platforms();
+        std::process::exit(0);
+    }
+
+    let db_file = matches
+        .get_one("vector-db")
+        .expect("input argument missing");
+
+    let num_vecs = matches
+        .get_one::<usize>("max-vectors")
+        .expect("invalid number of vectors")
+        .to_owned();
+
+    let opencl_selection = get_opencl_selection(&matches);
+
+    let mut chunk = load_vectors(db_file, num_vecs).await;
     let first_vec = Vec::from(chunk.get_vec(0));
 
     chunk.double();
 
+    // HACK: Ensure number of vectors is multiple of 32.
     chunk.use_num_vecs((chunk.num_vecs() & !(32 - 1)).into());
     println!("Using {} vectors.", chunk.num_vecs());
 
@@ -38,15 +57,21 @@ async fn main() {
         &reference[chunk.num_dims()..(chunk.num_dims() + 10)]
     );
 
+    if opencl_selection.is_none() {
+        return;
+    }
+
+    let OpenClDeviceSelection {
+        platform, device, ..
+    } = opencl_selection.expect("invalid selection");
+
     // Default setup.
-    let platform = Platform::first().unwrap();
     println!(
         "Using platform {} with {}",
         platform.name().unwrap(),
         platform.version().unwrap()
     );
 
-    let device = Device::first(platform).unwrap();
     println!("Using device {}", device.name().unwrap());
 
     let context = Context::builder()
@@ -88,6 +113,7 @@ async fn main() {
         .unwrap();
 
     // Execute kernel using result_queue.
+    const X: usize = 16;
     const P: usize = 16;
 
     let dot_product_kernel = Kernel::builder()
@@ -95,11 +121,11 @@ async fn main() {
         .name("dot_product")
         .queue(result_queue.clone())
         .global_work_size([chunk.num_vecs(), P])
-        .local_work_size([32, P])
+        .local_work_size([X, P])
         .arg(&matrix_buffer)
         .arg(&vector_buffer)
         .arg(&result_buffer)
-        .arg_local::<f32>(32 * (P + 1))
+        .arg_local::<f32>(X * (P + 1))
         .arg(chunk.num_vecs() as u32)
         .arg(chunk.num_dims() as u32)
         .build()
@@ -163,18 +189,16 @@ async fn main() {
     );
 }
 
-async fn load_vectors<const SAMPLE_SIZE: usize>() -> MemoryChunk {
-    let mut db = VecDb::open_read(PathBuf::from("vectors.bin"))
-        .await
-        .unwrap();
+async fn load_vectors(db_file: &PathBuf, sample_size: usize) -> MemoryChunk {
+    let mut db = VecDb::open_read(db_file).await.unwrap();
 
     let start = Instant::now();
 
     let num_vecs = *db.num_vectors;
     let num_dims = *db.num_dimensions;
 
-    let sample_size = (if SAMPLE_SIZE > 0 {
-        num_vecs.min(SAMPLE_SIZE)
+    let sample_size = (if sample_size > 0 {
+        num_vecs.min(sample_size)
     } else {
         num_vecs
     })
