@@ -2,11 +2,10 @@ mod dot_product;
 mod dot_topk;
 mod priority_queue;
 
+use clap::ArgMatches;
 use colored::Colorize;
 pub use dot_product::build_dot_product_program;
-pub use dot_topk::build_dot_topk_program;
 use ocl::{Device, Platform};
-pub use priority_queue::build_priority_queue_program;
 
 pub fn ocl_print_platforms() {
     let platforms = Platform::list();
@@ -50,4 +49,72 @@ pub fn ocl_print_platforms() {
             }
         }
     }
+}
+
+pub struct OpenClDeviceSelection {
+    platform_idx: usize,
+    device_idx: usize,
+    pub platform: Platform,
+    pub device: Device,
+}
+
+pub fn get_opencl_selection(matches: &ArgMatches) -> Option<OpenClDeviceSelection> {
+    let platforms = Platform::list();
+    if platforms.is_empty() {
+        return None;
+    }
+
+    let pid = matches
+        .get_one::<usize>("ocl-platform-id")
+        .unwrap_or(&0)
+        .to_owned();
+
+    let did = matches
+        .get_one::<usize>("ocl-device-id")
+        .unwrap_or(&0)
+        .to_owned();
+
+    // This should already be validated by the argument parser.
+    debug_assert!(pid < platforms.len(), "platform ID out of bounds");
+    let platform = platforms[pid];
+
+    let name = platform.name().unwrap_or(String::from("(unnamed)"));
+    println!(
+        "Using OpenCL platform {pid}: {name}",
+        pid = format!("{}", pid).green(),
+        name = name.green()
+    );
+
+    let devices = match Device::list_all(&platform) {
+        Ok(devices) => devices,
+        Err(e) => {
+            eprintln!("The selected platform has no available devices: {e}");
+            return None;
+        }
+    };
+
+    if did >= devices.len() {
+        eprintln!(
+            "Unable to select device {did} for platform {pid}",
+            did = format!("{}", did).blue(),
+            pid = format!("{}", pid).green()
+        );
+        return None;
+    }
+
+    let device = devices[did];
+    let name = device.name().unwrap_or(String::from("(unnamed)"));
+    println!(
+        "Using OpenCL platform {pid}'s device {did}: {name}",
+        pid = format!("{}", pid).green(),
+        did = format!("{}", did).blue(),
+        name = name.blue()
+    );
+
+    Some(OpenClDeviceSelection {
+        platform_idx: pid,
+        device_idx: did,
+        platform,
+        device,
+    })
 }

@@ -4,7 +4,9 @@ mod vec_traits;
 mod vecgen;
 
 use crate::cli::match_cli_arguments;
-use crate::opencl::{build_dot_product_program, ocl_print_platforms};
+use crate::opencl::{
+    build_dot_product_program, get_opencl_selection, ocl_print_platforms, OpenClDeviceSelection,
+};
 use memchunk::MemoryChunk;
 use ocl::{Buffer, Context, Device, Kernel, MemFlags, Platform, Queue};
 use std::path::PathBuf;
@@ -29,11 +31,14 @@ async fn main() {
         .expect("invalid number of vectors")
         .to_owned();
 
+    let opencl_selection = get_opencl_selection(&matches);
+
     let mut chunk = load_vectors(db_file, num_vecs).await;
     let first_vec = Vec::from(chunk.get_vec(0));
 
     chunk.double();
 
+    // HACK: Ensure number of vectors is multiple of 32.
     chunk.use_num_vecs((chunk.num_vecs() & !(32 - 1)).into());
     println!("Using {} vectors.", chunk.num_vecs());
 
@@ -52,15 +57,21 @@ async fn main() {
         &reference[chunk.num_dims()..(chunk.num_dims() + 10)]
     );
 
+    if opencl_selection.is_none() {
+        return;
+    }
+
+    let OpenClDeviceSelection {
+        platform, device, ..
+    } = opencl_selection.expect("invalid selection");
+
     // Default setup.
-    let platform = Platform::list()[1];
     println!(
         "Using platform {} with {}",
         platform.name().unwrap(),
         platform.version().unwrap()
     );
 
-    let device = Device::first(platform).unwrap();
     println!("Using device {}", device.name().unwrap());
 
     let context = Context::builder()

@@ -1,4 +1,4 @@
-use clap::{value_parser, Arg, ArgAction, ArgMatches, Command, ValueHint};
+use clap::{Arg, ArgAction, ArgMatches, Command, ValueHint};
 use std::path::PathBuf;
 
 pub fn match_cli_arguments() -> ArgMatches {
@@ -127,7 +127,7 @@ fn ocl_device_valid(s: &str) -> Result<usize, String> {
 fn num_vecs(s: &str) -> Result<usize, String> {
     const MIN_COUNT: usize = 256;
     let count: usize = s.parse().map_err(|e| format!("{e}"))?;
-    if count < MIN_COUNT {
+    if count != 0 && count < MIN_COUNT {
         Err(format!(
             "The number must be greater than or equal to {MIN_COUNT}"
         ))
