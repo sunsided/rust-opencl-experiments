@@ -15,6 +15,21 @@ pub struct FixedSizeMemoryChunk {
     data: Memory,
 }
 
+/// Hints at the intended memory access pattern.
+#[derive(Debug, Eq, PartialEq)]
+pub enum AccessHint {
+    /// Memory access will be mostly or entirely sequential.
+    Seqential,
+    /// Memory access follows no sequential pattern.
+    Random,
+}
+
+impl Default for AccessHint {
+    fn default() -> Self {
+        Self::Random
+    }
+}
+
 impl FixedSizeMemoryChunk {
     /// The number of bytes in this memory chunk.
     pub const SIZE_BYTES: usize = CHUNK_SIZE_BYTES;
@@ -22,9 +37,10 @@ impl FixedSizeMemoryChunk {
     /// The number of [`f32`] elements in this memory chunk.
     pub const LENGTH: usize = CHUNK_NUM_FLOATS;
 
-    pub fn allocate() -> Self {
+    pub fn allocate(access_pattern: AccessHint) -> Self {
+        let sequential = access_pattern == AccessHint::Seqential;
         let chunk =
-            Memory::allocate(Self::SIZE_BYTES, false, true).expect("memory allocation failed");
+            Memory::allocate(Self::SIZE_BYTES, sequential, true).expect("memory allocation failed");
 
         Self { data: chunk }
     }
@@ -36,6 +52,10 @@ impl FixedSizeMemoryChunk {
     pub const fn is_empty(&self) -> bool {
         false
     }
+}
+
+trait DotProduct<const NUM_FLOATS: usize> {
+    fn dot_product(coeffs: [f32; NUM_FLOATS]);
 }
 
 impl Deref for FixedSizeMemoryChunk {

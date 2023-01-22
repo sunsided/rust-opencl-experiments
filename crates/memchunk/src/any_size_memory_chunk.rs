@@ -137,12 +137,12 @@ impl AnySizeMemoryChunk {
         self.len() == 0
     }
 
-    pub fn num_vecs(&self) -> usize {
-        self.virt_num_vecs
+    pub fn num_vecs(&self) -> NumVectors {
+        NumVectors::from(self.virt_num_vecs)
     }
 
-    pub fn num_dims(&self) -> usize {
-        self.num_dims
+    pub fn num_dims(&self) -> NumDimensions {
+        NumDimensions::from(self.num_dims)
     }
 
     pub fn as_transposed(&self) -> Vec<f32> {

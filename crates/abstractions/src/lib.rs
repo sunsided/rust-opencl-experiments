@@ -12,12 +12,22 @@ impl NumVectors {
     pub const fn range(&self) -> Range<usize> {
         0..self.0
     }
+
+    #[inline(always)]
+    pub const fn into_inner(self) -> usize {
+        self.0
+    }
 }
 
 impl NumDimensions {
     #[inline(always)]
     pub const fn range(&self) -> Range<usize> {
         0..self.0
+    }
+
+    #[inline(always)]
+    pub const fn into_inner(self) -> usize {
+        self.0
     }
 }
 
@@ -61,6 +71,18 @@ impl From<u32> for NumDimensions {
 
 impl From<u32> for NumVectors {
     fn from(value: u32) -> Self {
+        Self(value as _)
+    }
+}
+
+impl From<i32> for NumDimensions {
+    fn from(value: i32) -> Self {
+        Self(value as _)
+    }
+}
+
+impl From<i32> for NumVectors {
+    fn from(value: i32) -> Self {
         Self(value as _)
     }
 }

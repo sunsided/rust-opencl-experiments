@@ -46,17 +46,17 @@ impl<const COLS: usize> RowMajorMatrixView<COLS> {
         let data: &[f32; Self::LENGTH] = data.try_into().expect("invalid dimensions");
         todo!()
     }
-    */
+     */
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fixed_size_memory_chunk::FixedSizeMemoryChunk;
+    use crate::fixed_size_memory_chunk::{AccessHint, FixedSizeMemoryChunk};
 
     #[test]
-    fn it_works() {
-        let chunk = FixedSizeMemoryChunk::allocate();
+    fn creating_view_works() {
+        let chunk = FixedSizeMemoryChunk::allocate(AccessHint::Seqential);
         let view = RowMajorMatrixView::<384>::wrap(chunk);
 
         assert_eq!(RowMajorMatrixView::<384>::COLS, 384);
@@ -64,5 +64,12 @@ mod tests {
 
         assert_eq!(view.cols(), 384);
         assert_eq!(view.rows(), 21845);
+    }
+
+    #[test]
+    fn wait_what() {
+        let vec = vec![1, 2, 3];
+        let slice: &[i32] = vec.as_ref();
+        assert_eq!(std::mem::size_of_val(slice), 12);
     }
 }
