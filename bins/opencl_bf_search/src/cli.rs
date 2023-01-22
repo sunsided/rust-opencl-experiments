@@ -1,4 +1,4 @@
-use clap::{Arg, ArgAction, ArgMatches, Command, ValueHint};
+use clap::{value_parser, Arg, ArgAction, ArgMatches, Command, ValueHint};
 use std::path::PathBuf;
 
 pub fn match_cli_arguments() -> ArgMatches {
@@ -47,6 +47,18 @@ pub fn match_cli_arguments() -> ArgMatches {
                 .default_value_if("ocl-list-platforms", "true", None)
                 .num_args(1)
                 .value_parser(file_valid)
+                .help_heading("Vector Database"),
+        )
+        .arg(
+            Arg::new("max-vectors")
+                .long("max-vecs")
+                .value_name("COUNT")
+                .help("The maximum number of vectors to load from the database")
+                .default_value(if cfg!(debug_assertions) { "10000" } else { "0" })
+                .hide_default_value(!cfg!(debug_assertions))
+                .num_args(1)
+                .allow_negative_numbers(false)
+                .value_parser(num_vecs)
                 .help_heading("Vector Database"),
         );
 
@@ -110,4 +122,16 @@ fn ocl_device_valid(s: &str) -> Result<usize, String> {
     }
 
     Ok(id)
+}
+
+fn num_vecs(s: &str) -> Result<usize, String> {
+    const MIN_COUNT: usize = 256;
+    let count: usize = s.parse().map_err(|e| format!("{e}"))?;
+    if count < MIN_COUNT {
+        Err(format!(
+            "The number must be greater than or equal to {MIN_COUNT}"
+        ))
+    } else {
+        Ok(count)
+    }
 }

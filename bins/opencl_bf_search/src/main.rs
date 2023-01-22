@@ -24,11 +24,12 @@ async fn main() {
         .get_one("vector-db")
         .expect("input argument missing");
 
-    #[cfg(debug_assertions)]
-    const K: usize = 10_000;
-    #[cfg(not(debug_assertions))]
-    const K: usize = 0;
-    let mut chunk = load_vectors::<K>(db_file).await;
+    let num_vecs = matches
+        .get_one::<usize>("max-vectors")
+        .expect("invalid number of vectors")
+        .to_owned();
+
+    let mut chunk = load_vectors(db_file, num_vecs).await;
     let first_vec = Vec::from(chunk.get_vec(0));
 
     chunk.double();
@@ -177,7 +178,7 @@ async fn main() {
     );
 }
 
-async fn load_vectors<const SAMPLE_SIZE: usize>(db_file: &PathBuf) -> MemoryChunk {
+async fn load_vectors(db_file: &PathBuf, sample_size: usize) -> MemoryChunk {
     let mut db = VecDb::open_read(db_file).await.unwrap();
 
     let start = Instant::now();
@@ -185,8 +186,8 @@ async fn load_vectors<const SAMPLE_SIZE: usize>(db_file: &PathBuf) -> MemoryChun
     let num_vecs = *db.num_vectors;
     let num_dims = *db.num_dimensions;
 
-    let sample_size = (if SAMPLE_SIZE > 0 {
-        num_vecs.min(SAMPLE_SIZE)
+    let sample_size = (if sample_size > 0 {
+        num_vecs.min(sample_size)
     } else {
         num_vecs
     })
