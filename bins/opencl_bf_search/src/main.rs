@@ -7,7 +7,7 @@ use crate::cli::match_cli_arguments;
 use crate::opencl::{
     build_dot_product_program, get_opencl_selection, ocl_print_platforms, OpenClDeviceSelection,
 };
-use memchunk::MemoryChunk;
+use memchunk::{AnySizeMemoryChunk, DotProduct, ReferenceDotProductParallel};
 use ocl::{Buffer, Context, Kernel, MemFlags, Queue};
 use std::path::PathBuf;
 use std::time::Instant;
@@ -39,11 +39,20 @@ async fn main() {
     chunk.double();
 
     // HACK: Ensure number of vectors is multiple of 32.
-    chunk.use_num_vecs((chunk.num_vecs() & !(32 - 1)).into());
+    chunk.use_num_vecs((chunk.num_vecs().into_inner() & !(32 - 1)).into());
     println!("Using {} vectors.", chunk.num_vecs());
 
+    let reference_algo = ReferenceDotProductParallel::default();
+    let mut reference = vec![0.0; chunk.num_vecs().into_inner()];
+
     let start = Instant::now();
-    let reference = chunk.search_reference(&first_vec);
+    reference_algo.dot_product(
+        &first_vec,
+        chunk.as_ref(),
+        chunk.num_dims(),
+        chunk.num_vecs(),
+        &mut reference,
+    );
     let duration_cpu = (Instant::now() - start).as_secs_f32();
     println!(
         "Duration processing {vecs} vectors on CPU: {duration} s",
@@ -54,7 +63,7 @@ async fn main() {
     println!("{:?} ...", &reference[..10]);
     println!(
         "{:?} ...",
-        &reference[chunk.num_dims()..(chunk.num_dims() + 10)]
+        &reference[chunk.num_dims().into_inner()..(chunk.num_dims().into_inner() + 10)]
     );
 
     if opencl_selection.is_none() {
@@ -100,7 +109,7 @@ async fn main() {
     let vector_buffer = Buffer::<f32>::builder()
         .queue(vector_queue.clone())
         .flags(MemFlags::new().read_only().host_write_only())
-        .len(chunk.num_dims())
+        .len(chunk.num_dims().into_inner())
         .build()
         .unwrap();
 
@@ -108,7 +117,7 @@ async fn main() {
     let result_buffer = Buffer::<f32>::builder()
         .queue(result_queue.clone())
         .flags(MemFlags::new().write_only().host_read_only())
-        .len(chunk.num_vecs())
+        .len(chunk.num_vecs().into_inner())
         .build()
         .unwrap();
 
@@ -120,14 +129,14 @@ async fn main() {
         .program(&dot_product)
         .name("dot_product")
         .queue(result_queue.clone())
-        .global_work_size([chunk.num_vecs(), P])
+        .global_work_size([chunk.num_vecs().into_inner(), P])
         .local_work_size([X, P])
         .arg(&matrix_buffer)
         .arg(&vector_buffer)
         .arg(&result_buffer)
         .arg_local::<f32>(X * (P + 1))
-        .arg(chunk.num_vecs() as u32)
-        .arg(chunk.num_dims() as u32)
+        .arg(chunk.num_vecs().into_inner() as u32)
+        .arg(chunk.num_dims().into_inner() as u32)
         .build()
         .unwrap();
 
@@ -160,7 +169,7 @@ async fn main() {
     let start_kernel = Instant::now();
     unsafe { dot_product_kernel.cmd().enq().unwrap() };
 
-    let mut results = vec![f32::NAN; chunk.num_vecs()];
+    let mut results = vec![f32::NAN; chunk.num_vecs().into_inner()];
     result_buffer.cmd().read(&mut results).enq().unwrap();
 
     // Flush result_queue to make sure that the read operation has been sent to the device.
@@ -187,11 +196,11 @@ async fn main() {
     println!("{:?} ...", &results[..10]);
     println!(
         "{:?} ...",
-        &results[chunk.num_dims()..(chunk.num_dims() + 10)]
+        &results[chunk.num_dims().into_inner()..(chunk.num_dims().into_inner() + 10)]
     );
 }
 
-async fn load_vectors(db_file: &PathBuf, sample_size: usize) -> MemoryChunk {
+async fn load_vectors(db_file: &PathBuf, sample_size: usize) -> AnySizeMemoryChunk {
     let mut db = VecDb::open_read(db_file).await.unwrap();
 
     let start = Instant::now();
@@ -206,7 +215,7 @@ async fn load_vectors(db_file: &PathBuf, sample_size: usize) -> MemoryChunk {
     })
     .into();
 
-    let mut chunk = MemoryChunk::new(sample_size, db.num_dimensions);
+    let mut chunk = AnySizeMemoryChunk::new(sample_size, db.num_dimensions);
     let data = chunk.as_mut();
 
     println!("Loading {sample_size} elements from vector database ...");
