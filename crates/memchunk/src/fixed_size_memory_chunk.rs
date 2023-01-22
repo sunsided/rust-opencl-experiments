@@ -1,7 +1,14 @@
 use alloc_madvise::Memory;
 use std::ops::{Deref, DerefMut};
 
-pub type ChunkTypeF32 = [f32; 8388608];
+/// The number of bytes in a memory chunk.
+pub const CHUNK_SIZE_BYTES: usize = megabytes_to_bytes(32);
+
+/// The number of [`f32`] values in a memory chunk.
+pub const CHUNK_NUM_FLOATS: usize = CHUNK_SIZE_BYTES / std::mem::size_of::<f32>();
+
+/// A slice of [`f32`] of exactly [`CHUNK_NUM_FLOATS`] elements.
+pub type ChunkTypeF32 = [f32; CHUNK_NUM_FLOATS];
 
 #[derive(Debug)]
 pub struct FixedSizeMemoryChunk {
@@ -10,10 +17,10 @@ pub struct FixedSizeMemoryChunk {
 
 impl FixedSizeMemoryChunk {
     /// The number of bytes in this memory chunk.
-    pub const SIZE_BYTES: usize = 32 * 1024 * 1024;
+    pub const SIZE_BYTES: usize = CHUNK_SIZE_BYTES;
 
     /// The number of [`f32`] elements in this memory chunk.
-    pub const LENGTH: usize = Self::SIZE_BYTES / std::mem::size_of::<f32>();
+    pub const LENGTH: usize = CHUNK_NUM_FLOATS;
 
     pub fn allocate() -> Self {
         let chunk =
@@ -70,5 +77,23 @@ impl AsMut<ChunkTypeF32> for FixedSizeMemoryChunk {
     fn as_mut(&mut self) -> &mut ChunkTypeF32 {
         let data: &mut [f32] = self.data.as_mut();
         data.try_into().expect("invalid size")
+    }
+}
+
+/// Converts from megabytes to bytes.
+///
+/// ## Arguments
+/// * `mb` - The number of megabytes to represent as bytes.
+const fn megabytes_to_bytes(mb: usize) -> usize {
+    mb * 1024 * 1024
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn megabytes_to_bytes_works() {
+        assert_eq!(megabytes_to_bytes(1), 1_048_576);
     }
 }
