@@ -52,8 +52,6 @@ pub fn ocl_print_platforms() {
 }
 
 pub struct OpenClDeviceSelection {
-    platform_idx: usize,
-    device_idx: usize,
     pub platform: Platform,
     pub device: Device,
 }
@@ -111,10 +109,5 @@ pub fn get_opencl_selection(matches: &ArgMatches) -> Option<OpenClDeviceSelectio
         name = name.blue()
     );
 
-    Some(OpenClDeviceSelection {
-        platform_idx: pid,
-        device_idx: did,
-        platform,
-        device,
-    })
+    Some(OpenClDeviceSelection { platform, device })
 }

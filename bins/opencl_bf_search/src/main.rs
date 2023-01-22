@@ -8,7 +8,7 @@ use crate::opencl::{
     build_dot_product_program, get_opencl_selection, ocl_print_platforms, OpenClDeviceSelection,
 };
 use memchunk::MemoryChunk;
-use ocl::{Buffer, Context, Device, Kernel, MemFlags, Platform, Queue};
+use ocl::{Buffer, Context, Kernel, MemFlags, Queue};
 use std::path::PathBuf;
 use std::time::Instant;
 use vecdb::VecDb;
