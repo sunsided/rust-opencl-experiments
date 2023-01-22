@@ -140,13 +140,15 @@ async fn main() {
     // Write the buffer using memory mapping (since pinning isn't supported).
     // This did not provide any noticeable performance benefit on the Intel Iris XE
     // and is kept here only for reference.
-    unsafe {
+    //
+    // Moreover, this also seemed to produce empty buffers on an NVidia GTX 980 Ti.
+    /*unsafe {
         let mut mem_map = matrix_buffer.map().enq().unwrap();
         mem_map.copy_from_slice(&transposed);
         mem_map.unmap().enq().unwrap();
-    }
+    }*/
 
-    // matrix_buffer.cmd().write(&transposed).enq().unwrap();
+    matrix_buffer.cmd().write(&transposed).enq().unwrap();
     vector_buffer.cmd().write(&first_vec).enq().unwrap();
 
     // Flush the matrix and vector queues to make sure that the write
