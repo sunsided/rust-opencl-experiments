@@ -1,3 +1,4 @@
+use crate::alignments::Alignment;
 use alloc_madvise::Memory;
 use std::ops::{Deref, DerefMut};
 
@@ -41,6 +42,7 @@ impl FixedSizeMemoryChunk {
         let sequential = access_pattern == AccessHint::Seqential;
         let chunk =
             Memory::allocate(Self::SIZE_BYTES, sequential, true).expect("memory allocation failed");
+        debug_assert!((chunk.as_ptr() as *const f32).is_64byte_aligned());
 
         Self { data: chunk }
     }

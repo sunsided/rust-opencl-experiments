@@ -7,6 +7,9 @@ use std::ops::{Deref, Mul, Range};
 pub struct NumDimensions(usize);
 
 impl NumDimensions {
+    /// A 384-dimensional entity.
+    pub const DIMS_384: NumDimensions = Self(384);
+
     /// Generates a range of elements from `0` to the represented number.
     #[inline(always)]
     pub const fn range(&self) -> Range<usize> {
