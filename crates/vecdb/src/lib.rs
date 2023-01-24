@@ -126,7 +126,7 @@ impl VecDb {
         count: NumVectors,
         mut fun: F,
     ) -> Result<usize, fmmap::error::Error> {
-        let count = self.num_vectors.min(*count);
+        let count = self.num_vectors.min(count).get();
         let mut reader = self.mmap.reader(self.pos)?;
         let mut vec = vec![0.0; *self.num_dimensions];
         for v in 0..count {

@@ -30,8 +30,8 @@ impl DotProduct for ReferenceDotProduct {
         num_vecs: NumVectors,
         results: &mut [f32],
     ) {
-        let num_vecs = num_vecs.into_inner();
-        let num_dims = num_dims.into_inner();
+        let num_vecs = num_vecs.get();
+        let num_dims = num_dims.get();
 
         debug_assert_eq!(query.len(), num_dims, "query vector dimension mismatch");
         debug_assert_eq!(results.len(), num_vecs, "result vector dimension mismatch");
@@ -64,8 +64,8 @@ impl DotProduct for ReferenceDotProductParallel {
         num_vecs: NumVectors,
         results: &mut [f32],
     ) {
-        let num_vecs = num_vecs.into_inner();
-        let num_dims = num_dims.into_inner();
+        let num_vecs = num_vecs.get();
+        let num_dims = num_dims.get();
 
         debug_assert_eq!(query.len(), num_dims, "query vector dimension mismatch");
         debug_assert_eq!(results.len(), num_vecs, "result vector dimension mismatch");
@@ -101,8 +101,8 @@ impl<const UNROLL_FACTOR: usize> DotProduct for ReferenceDotProductUnrolled<UNRO
         num_vecs: NumVectors,
         results: &mut [f32],
     ) {
-        let num_vecs = num_vecs.into_inner();
-        let num_dims = num_dims.into_inner();
+        let num_vecs = num_vecs.get();
+        let num_dims = num_dims.get();
 
         debug_assert_eq!(query.len(), num_dims, "query vector dimension mismatch");
         debug_assert_eq!(results.len(), num_vecs, "result vector dimension mismatch");
@@ -159,8 +159,8 @@ mod tests {
         reference.dot_product(
             &query,
             &data,
-            NumDimensions::from(3),
-            NumVectors::from(4),
+            NumDimensions::from(3u32),
+            NumVectors::from(4u32),
             &mut results,
         );
 

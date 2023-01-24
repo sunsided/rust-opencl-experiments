@@ -39,11 +39,11 @@ async fn main() {
     chunk.double();
 
     // HACK: Ensure number of vectors is multiple of 32.
-    chunk.use_num_vecs((chunk.num_vecs().into_inner() & !(32 - 1)).into());
+    chunk.use_num_vecs((chunk.num_vecs().get() & !(32 - 1)).into());
     println!("Using {} vectors.", chunk.num_vecs());
 
     let reference_algo = ReferenceDotProductParallel::default();
-    let mut reference = vec![0.0; chunk.num_vecs().into_inner()];
+    let mut reference = vec![0.0; chunk.num_vecs().get()];
 
     let start = Instant::now();
     reference_algo.dot_product(
@@ -63,7 +63,7 @@ async fn main() {
     println!("{:?} ...", &reference[..10]);
     println!(
         "{:?} ...",
-        &reference[chunk.num_dims().into_inner()..(chunk.num_dims().into_inner() + 10)]
+        &reference[chunk.num_dims().get()..(chunk.num_dims().get() + 10)]
     );
 
     if opencl_selection.is_none() {
@@ -101,7 +101,7 @@ async fn main() {
     let matrix_buffer = Buffer::<f32>::builder()
         .queue(matrix_queue.clone())
         .flags(MemFlags::new().read_only().host_write_only())
-        .len(chunk.num_vecs() * chunk.num_dims())
+        .len((chunk.num_vecs() * chunk.num_dims()).get())
         .build()
         .unwrap();
 
@@ -109,7 +109,7 @@ async fn main() {
     let vector_buffer = Buffer::<f32>::builder()
         .queue(vector_queue.clone())
         .flags(MemFlags::new().read_only().host_write_only())
-        .len(chunk.num_dims().into_inner())
+        .len(chunk.num_dims().get())
         .build()
         .unwrap();
 
@@ -117,7 +117,7 @@ async fn main() {
     let result_buffer = Buffer::<f32>::builder()
         .queue(result_queue.clone())
         .flags(MemFlags::new().write_only().host_read_only())
-        .len(chunk.num_vecs().into_inner())
+        .len(chunk.num_vecs().get())
         .build()
         .unwrap();
 
@@ -129,14 +129,14 @@ async fn main() {
         .program(&dot_product)
         .name("dot_product")
         .queue(result_queue.clone())
-        .global_work_size([chunk.num_vecs().into_inner(), P])
+        .global_work_size([chunk.num_vecs().get(), P])
         .local_work_size([X, P])
         .arg(&matrix_buffer)
         .arg(&vector_buffer)
         .arg(&result_buffer)
         .arg_local::<f32>(X * (P + 1))
-        .arg(chunk.num_vecs().into_inner() as u32)
-        .arg(chunk.num_dims().into_inner() as u32)
+        .arg(chunk.num_vecs().get() as u32)
+        .arg(chunk.num_dims().get() as u32)
         .build()
         .unwrap();
 
@@ -169,7 +169,7 @@ async fn main() {
     let start_kernel = Instant::now();
     unsafe { dot_product_kernel.cmd().enq().unwrap() };
 
-    let mut results = vec![f32::NAN; chunk.num_vecs().into_inner()];
+    let mut results = vec![f32::NAN; chunk.num_vecs().get()];
     result_buffer.cmd().read(&mut results).enq().unwrap();
 
     // Flush result_queue to make sure that the read operation has been sent to the device.
@@ -196,7 +196,7 @@ async fn main() {
     println!("{:?} ...", &results[..10]);
     println!(
         "{:?} ...",
-        &results[chunk.num_dims().into_inner()..(chunk.num_dims().into_inner() + 10)]
+        &results[chunk.num_dims().get()..(chunk.num_dims().get() + 10)]
     );
 }
 
