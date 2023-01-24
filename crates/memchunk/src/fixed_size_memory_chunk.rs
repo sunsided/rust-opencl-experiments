@@ -35,7 +35,7 @@ impl FixedSizeMemoryChunk {
     pub const SIZE_BYTES: usize = CHUNK_SIZE_BYTES;
 
     /// The number of [`f32`] elements in this memory chunk.
-    pub const LENGTH: usize = CHUNK_NUM_FLOATS;
+    pub const NUM_FLOATS: usize = CHUNK_NUM_FLOATS;
 
     pub fn allocate(access_pattern: AccessHint) -> Self {
         let sequential = access_pattern == AccessHint::Seqential;
@@ -46,7 +46,7 @@ impl FixedSizeMemoryChunk {
     }
 
     pub const fn len(&self) -> usize {
-        Self::LENGTH
+        Self::NUM_FLOATS
     }
 
     pub const fn is_empty(&self) -> bool {

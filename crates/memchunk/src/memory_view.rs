@@ -9,7 +9,7 @@ impl<const COLS: usize> RowMajorMatrixView<COLS> {
     pub const COLS: usize = COLS;
 
     /// The number of rows.
-    pub const ROWS: usize = FixedSizeMemoryChunk::LENGTH / Self::COLS;
+    pub const ROWS: usize = FixedSizeMemoryChunk::NUM_FLOATS / Self::COLS;
 
     /// The number of [`f32`] elements in this memory view.
     pub const LENGTH: usize = Self::COLS * Self::ROWS;
