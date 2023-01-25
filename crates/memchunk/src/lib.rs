@@ -13,3 +13,4 @@ pub use dot_product::{
     DotProduct, ReferenceDotProduct, ReferenceDotProductParallel, ReferenceDotProductUnrolled,
 };
 pub use errors::InsertVectorError;
+pub use row_major_chunk_manager::RowMajorChunkManager;
