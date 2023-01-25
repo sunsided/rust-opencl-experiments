@@ -3,7 +3,17 @@ use alloc_madvise::Memory;
 use std::ops::{Deref, DerefMut};
 
 /// The number of bytes in a memory chunk.
-pub const CHUNK_SIZE_BYTES: usize = megabytes_to_bytes(32);
+///
+/// ## Chunk size considerations
+/// Typical vector lengths in question include 256, 384, 512, 768, 1024, 1536, 1792 and 2048,
+/// the least common multiple of which is 43008.
+/// Following this, the most efficient chunk size appears to be `33374208` bytes
+/// (194 × 4 bytes × 43008) rather than `33554432` bytes (32 MiB).
+pub const CHUNK_SIZE_BYTES: usize = if cfg!(not(feature = "power-of-two-chunks")) {
+    33_374_208
+} else {
+    megabytes_to_bytes(32)
+};
 
 /// The number of [`f32`] values in a memory chunk.
 pub const CHUNK_NUM_FLOATS: usize = CHUNK_SIZE_BYTES / std::mem::size_of::<f32>();

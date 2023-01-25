@@ -215,7 +215,12 @@ mod tests {
     #[test]
     fn insert_many_works() {
         let mut manager = BaseChunkManager::new(NumDimensions::DIMS_384, AccessHint::Random);
-        assert_eq!(manager.num_vecs_per_chunk, NumVectors::from(21845_usize));
+        let expected_vecs = if cfg!(feature = "power-of-two-chunks") {
+            21845_usize
+        } else {
+            21728_usize
+        };
+        assert_eq!(manager.num_vecs_per_chunk, NumVectors::from(expected_vecs));
         for i in 0..manager.num_vecs_per_chunk.get() {
             let id = LocalId::try_from(i + 1).expect("invalid ID");
             {

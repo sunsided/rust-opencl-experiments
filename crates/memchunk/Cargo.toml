@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.66"
 
+[features]
+# Enforces that chunk sizes are a power of two.
+power-of-two-chunks = []
+
 [dependencies]
 abstractions = { path = "../../crates/abstractions" }
 alloc-madvise = { version = "0.3.0", default-features = false }
