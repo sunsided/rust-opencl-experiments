@@ -30,17 +30,16 @@ impl ChunkManager for RowMajorChunkManager {
         let src = vector.as_ref();
         debug_assert_eq!(src.len(), num_dims.get());
 
-        // TODO: This should fail when the vector was already registered.
-        let mut assignment = self.manager.register_vector(id);
+        self.manager.register_vector(id, |index, chunk| {
+            // Since this is a row-major format, the n-th vector
+            // starts at index n * dimensions.
+            let idx = index * num_dims;
 
-        // Since this is a row-major format, the n-th vector
-        // starts at index n * dimensions.
-        let idx = assignment.index * num_dims;
-
-        let data: &mut [f32] = assignment.chunk.as_mut();
-        let target = &mut data[idx..idx + num_dims.get()];
-        debug_assert!(target.as_ptr().is_64byte_aligned());
-        target.copy_from_slice(vector.as_ref());
+            let data: &mut [f32] = chunk.as_mut();
+            let target = &mut data[idx..idx + num_dims.get()];
+            debug_assert!(target.as_ptr().is_64byte_aligned());
+            target.copy_from_slice(vector.as_ref());
+        })?;
 
         Ok(())
     }

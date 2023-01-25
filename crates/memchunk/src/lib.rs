@@ -1,9 +1,13 @@
 mod alignments;
 mod any_size_memory_chunk;
+mod chunk_index;
 mod chunk_manager;
+mod chunk_vector;
 mod dot_product;
 mod errors;
 mod fixed_size_memory_chunk;
+mod index_vector_assignments;
+mod local_id_registry;
 mod memory_view;
 mod row_major_chunk_manager;
 mod topk;

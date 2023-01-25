@@ -27,7 +27,7 @@ pub struct FixedSizeMemoryChunk {
 }
 
 /// Hints at the intended memory access pattern.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum AccessHint {
     /// Memory access will be mostly or entirely sequential.
     Seqential,

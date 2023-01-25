@@ -1,8 +1,11 @@
+use crate::chunk_index::ChunkIndex;
+use crate::chunk_vector::ChunkVector;
 use crate::fixed_size_memory_chunk::{AccessHint, FixedSizeMemoryChunk};
+use crate::index_vector_assignments::IndexVectorAssignments;
+use crate::local_id_registry::IdRegistry;
 use crate::InsertVectorError;
 use abstractions::{LocalId, NumDimensions, NumVectors};
-use std::ops::{Index, IndexMut};
-use std::slice::SliceIndex;
+use std::ops::Deref;
 
 pub trait ChunkManager {
     /// Creates a new chunk manager.
@@ -34,11 +37,13 @@ pub trait ChunkManager {
 pub(crate) struct BaseChunkManager {
     num_dims: NumDimensions,
     num_vecs_per_chunk: NumVectors,
+    /// A registry of ID to chunk index.
+    registry: IdRegistry<LocalId, ChunkIndex>,
     /// The allocated memory chunks.
-    chunks: Vec<FixedSizeMemoryChunk>,
+    chunks: ChunkVector,
     /// The vector assignments per chunk. This vector always has the same number
     /// of elements as the `chunks` vector itself.
-    assignments: Vec<IndexVectorAssignment>,
+    assignments: IndexVectorAssignments,
 }
 
 impl BaseChunkManager {
@@ -56,8 +61,9 @@ impl BaseChunkManager {
         Self {
             num_dims: dims,
             num_vecs_per_chunk: num_vecs_per_chunk.into(),
-            chunks: vec![FixedSizeMemoryChunk::allocate(access_hint)],
-            assignments: vec![IndexVectorAssignment::new(num_vecs_per_chunk.into())],
+            registry: IdRegistry::new(),
+            chunks: ChunkVector::new(access_hint),
+            assignments: IndexVectorAssignments::new(num_vecs_per_chunk.into()),
         }
     }
 
@@ -74,31 +80,51 @@ impl BaseChunkManager {
     ///
     /// ## Arguments
     /// * `id` - The ID of the vector to register.
-    pub fn register_vector(&mut self, id: LocalId) -> AssignmentMut {
-        // TODO: This should fail when the vector was already registered.
+    /// * `register_fn` - The function used to register the vector.
+    pub fn register_vector<F, R>(
+        &mut self,
+        id: LocalId,
+        register_fn: F,
+    ) -> Result<R, InsertVectorError>
+    where
+        F: Fn(usize, &mut FixedSizeMemoryChunk) -> R,
+    {
+        if cfg!(not(feature = "optimistic")) && self.registry.contains_key(&id) {
+            return Err(InsertVectorError::DuplicateId(id));
+        }
 
-        let chunk_idx = 0;
-        // TODO: Use BTreeMap to look up chunk index from local ID.
+        // Get a chunk to insert into.
+        let selected_chunk = self.ensure_chunk_with_capacity();
+        let chunk_idx = *selected_chunk;
+
+        if let Some(previous_index) = self.registry.insert(id, chunk_idx) {
+            // Revert the assignment we just did.
+            self.registry.insert(id, previous_index);
+            // TODO: We may just have allocated a new chunk - deallocate?
+            debug_assert!(
+                !selected_chunk.is_allocated(),
+                "the previous allocation was not freed"
+            );
+            return Err(InsertVectorError::DuplicateId(id));
+        }
 
         let chunk = &mut self.chunks[chunk_idx];
         let assignments = &mut self.assignments[chunk_idx];
         debug_assert!(
             assignments.len() < self.num_vecs_per_chunk.get(),
-            "No space left for vectors; additional allocation required"
+            "No space left for vectors; allocation failed?"
         );
 
-        /// The last slot is always empty unless the previous condition fails.
+        // The last slot is always empty unless the previous condition fails.
         let target_slot = assignments.len();
         let _previous_value = assignments.replace(target_slot, Some(id));
-        assert_eq!(
-            _previous_value, None,
+        debug_assert!(
+            _previous_value,
+            None,
             "Overwrote slot that was already in use"
         );
 
-        AssignmentMut {
-            chunk,
-            index: target_slot,
-        }
+        Ok(register_fn(target_slot, chunk))
     }
 
     // TODO: Add unregister; should return Ok(Some(reassignment)) or Ok(None) if the chunk has less than two elements left.
@@ -117,78 +143,62 @@ impl BaseChunkManager {
 
     /// Gets the number of vectors in the specified chunk.
     #[cfg(debug_assertions)]
-    fn chunk_vector_count(&self, idx: usize) -> usize {
+    fn chunk_vector_count(&self, idx: ChunkIndex) -> usize {
         self.assignments[idx].len()
     }
+
+    /// Returns a chunk index with free capacity to insert to.
+    /// If no free chunk is available, another chunk is allocated.
+    fn ensure_chunk_with_capacity(&mut self) -> SelectedChunk {
+        // We always insert into the last chunk. If the last chunk is full
+        // we allocate another one.
+        let chunk_idx = self.chunks.last_index();
+        if !(self.assignments[chunk_idx].is_full()) {
+            return SelectedChunk::Reused(chunk_idx);
+        }
+
+        let chunk_idx = self.chunks.allocate_next();
+        let assignment_idx = self.assignments.allocate_next();
+        debug_assert_eq!(chunk_idx, assignment_idx, "indexes diverged in registries");
+        SelectedChunk::AllocatedNew(chunk_idx)
+    }
 }
 
-pub(crate) struct AssignmentMut<'chunk> {
-    /// The vector's index in the chunk. Can be used to calculate the element or pointer offset
-    /// at which to store the slice of data.
-    pub index: usize,
-    /// The chunk in which to store the vector data.
-    pub chunk: &'chunk mut FixedSizeMemoryChunk,
+enum SelectedChunk {
+    Reused(ChunkIndex),
+    AllocatedNew(ChunkIndex),
 }
 
-/// Registers the used [`LocalId`] for each index.
-pub(crate) struct IndexVectorAssignment {
-    count: usize,
-    assignments: Vec<Option<LocalId>>,
-}
-
-impl IndexVectorAssignment {
-    /// Creates a new [`IndexVectorAssignment`] instance with the specified number of elements.
-    pub fn new(num_vecs: NumVectors) -> Self {
-        Self {
-            count: 0,
-            assignments: vec![None; num_vecs.get()],
+impl SelectedChunk {
+    pub fn is_allocated(&self) -> bool {
+        if let Self::AllocatedNew(_) = self {
+            true
+        } else {
+            false
         }
     }
 
-    /// Gets the value at the specified index.
     #[inline(always)]
-    pub fn get(&self, index: usize) -> Option<LocalId> {
-        self.assignments[index]
-    }
-
-    /// Replaces the value at the specified index and returns the old value contained.
-    #[inline(always)]
-    pub fn replace(&mut self, index: usize, value: Option<LocalId>) -> Option<LocalId> {
-        let slot = &mut self.assignments[index];
-        let previous = slot.clone();
-        *slot = value;
-
-        // If an empty v is overwritten with a value, we increase the count.
-        // If an full slot is overwritten with an empty value, we decrease.
-        // In all other cases the value does not count.
-        if value.is_some() && previous.is_none() {
-            self.count += 1;
-        } else if value.is_none() && previous.is_some() {
-            self.count -= 1;
-        }
-
-        previous
-    }
-
-    /// Gets the number of elements in this list.
-    #[inline(always)]
-    pub fn len(&self) -> usize {
-        self.count
-    }
-
-    /// Gets the number of elements in this list.
-    #[inline(always)]
-    pub fn is_empty(&self) -> bool {
-        self.count == 0
+    pub fn get(&self) -> ChunkIndex {
+        *(*self)
     }
 }
 
-impl Index<usize> for IndexVectorAssignment {
-    type Output = Option<LocalId>;
+impl Deref for SelectedChunk {
+    type Target = ChunkIndex;
 
+    fn deref(&self) -> &Self::Target {
+        match self {
+            SelectedChunk::Reused(x) => x,
+            SelectedChunk::AllocatedNew(x) => x,
+        }
+    }
+}
+
+impl Into<ChunkIndex> for SelectedChunk {
     #[inline(always)]
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.assignments[index]
+    fn into(self) -> ChunkIndex {
+        *self
     }
 }
 
@@ -224,10 +234,17 @@ mod tests {
         for i in 0..manager.num_vecs_per_chunk.get() {
             let id = LocalId::try_from(i + 1).expect("invalid ID");
             {
-                let assignment = manager.register_vector(id);
-                assert_eq!(assignment.index, i, "unexpected index assignment");
+                manager
+                    .register_vector(id, |index, _chunk| {
+                        assert_eq!(index, i, "unexpected index assignment")
+                    })
+                    .expect("registration failed");
             }
-            assert_eq!(manager.chunk_vector_count(0), i + 1, "unexpected length");
+            assert_eq!(
+                manager.chunk_vector_count(ChunkIndex::ZERO),
+                i + 1,
+                "unexpected length"
+            );
         }
 
         assert_eq!(
@@ -236,9 +253,19 @@ mod tests {
             "no additional chunk allocation was expected"
         );
 
-        // TODO: Adding another vector crashes.
-        let assignment = manager.register_vector(
-            LocalId::try_from(manager.num_vecs_per_chunk.get()).expect("invalid ID"),
+        // Adding another vector will allocate. The next vector to be inserted
+        // is then placed at the zero-th index within that chunk.
+        let next_id = LocalId::try_from(manager.num_vecs_per_chunk.get() + 1).expect("invalid ID");
+        manager
+            .register_vector(next_id, |index, _chunk| {
+                assert_eq!(index, 0, "vector expected at index 0")
+            })
+            .expect("registration failed");
+
+        assert_eq!(
+            manager.num_chunks(),
+            2,
+            "additional chunk allocation was expected"
         );
     }
 }

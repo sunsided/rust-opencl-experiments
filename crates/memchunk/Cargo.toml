@@ -7,6 +7,8 @@ rust-version = "1.66"
 [features]
 # Enforces that chunk sizes are a power of two.
 power-of-two-chunks = []
+# Disables pessimistic checks in certain locations.
+optimistic = []
 
 [dependencies]
 abstractions = { path = "../../crates/abstractions" }

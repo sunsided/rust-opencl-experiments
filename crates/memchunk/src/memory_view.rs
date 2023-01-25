@@ -59,11 +59,17 @@ mod tests {
         let chunk = FixedSizeMemoryChunk::allocate(AccessHint::Seqential);
         let view = RowMajorMatrixView::<384>::wrap(chunk);
 
+        let expected_vecs = if cfg!(feature = "power-of-two-chunks") {
+            21845_usize
+        } else {
+            21728_usize
+        };
+
         assert_eq!(RowMajorMatrixView::<384>::COLS, 384);
-        assert_eq!(RowMajorMatrixView::<384>::ROWS, 21845);
+        assert_eq!(RowMajorMatrixView::<384>::ROWS, expected_vecs);
 
         assert_eq!(view.cols(), 384);
-        assert_eq!(view.rows(), 21845);
+        assert_eq!(view.rows(), expected_vecs);
     }
 
     #[test]
