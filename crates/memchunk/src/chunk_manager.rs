@@ -118,7 +118,7 @@ impl BaseChunkManager {
         // The last slot is always empty unless the previous condition fails.
         let target_slot = assignments.len();
         let _previous_value = assignments.replace(target_slot, Some(id));
-        debug_assert!(
+        debug_assert_eq!(
             _previous_value,
             None,
             "Overwrote slot that was already in use"
