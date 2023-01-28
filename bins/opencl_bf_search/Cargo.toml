@@ -11,6 +11,11 @@ path = "examples/trivial.rs"
 [[bench]]
 name = "dot_products"
 harness = false
+# required-features = ["power-of-two-chunks"]
+
+[features]
+# Enforces that chunk sizes are a power of two.
+power-of-two-chunks = ["memchunk/power-of-two-chunks"]
 
 [dependencies]
 approx = "0.5.1"

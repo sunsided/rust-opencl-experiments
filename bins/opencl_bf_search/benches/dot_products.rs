@@ -1,7 +1,7 @@
 use criterion::Criterion;
 use criterion::{criterion_group, criterion_main};
 use criterion::{BenchmarkId, Throughput};
-use memchunk::AnySizeMemoryChunk;
+use memchunk::{AnySizeMemoryChunk, DotProduct, ReferenceDotProduct, ReferenceDotProductUnrolled};
 use std::hint::black_box;
 use std::path::PathBuf;
 use vecdb::VecDb;
@@ -17,8 +17,20 @@ fn from_elem(c: &mut Criterion) {
     for size in sizes.iter() {
         group.throughput(Throughput::Elements(*size as u64));
         chunk.use_num_vecs((*size).into());
+
+        let algo = ReferenceDotProduct::default();
+        let mut reference = vec![0.0; chunk.num_vecs().get()];
+
         group.bench_function(BenchmarkId::from_parameter(size), |b| {
-            b.iter(|| chunk.search_naive(black_box(&first_vec)));
+            b.iter(|| {
+                algo.dot_product(
+                    black_box(&first_vec),
+                    black_box(chunk.as_ref()),
+                    black_box(chunk.num_dims()),
+                    black_box(chunk.num_vecs()),
+                    black_box(&mut reference),
+                )
+            });
         });
     }
     group.finish();
@@ -27,8 +39,20 @@ fn from_elem(c: &mut Criterion) {
     for size in sizes.iter() {
         group.throughput(Throughput::Elements(*size as u64));
         chunk.use_num_vecs((*size).into());
+
+        let algo = ReferenceDotProductUnrolled::<8>::default();
+        let mut reference = vec![0.0; chunk.num_vecs().get()];
+
         group.bench_function(BenchmarkId::from_parameter(size), |b| {
-            b.iter(|| chunk.search_unrolled::<8>(black_box(&first_vec)));
+            b.iter(|| {
+                algo.dot_product(
+                    black_box(&first_vec),
+                    black_box(chunk.as_ref()),
+                    black_box(chunk.num_dims()),
+                    black_box(chunk.num_vecs()),
+                    black_box(&mut reference),
+                )
+            });
         });
     }
     group.finish();
@@ -37,8 +61,20 @@ fn from_elem(c: &mut Criterion) {
     for size in sizes.iter() {
         group.throughput(Throughput::Elements(*size as u64));
         chunk.use_num_vecs((*size).into());
+
+        let algo = ReferenceDotProductUnrolled::<16>::default();
+        let mut reference = vec![0.0; chunk.num_vecs().get()];
+
         group.bench_function(BenchmarkId::from_parameter(size), |b| {
-            b.iter(|| chunk.search_unrolled::<16>(black_box(&first_vec)));
+            b.iter(|| {
+                algo.dot_product(
+                    black_box(&first_vec),
+                    black_box(chunk.as_ref()),
+                    black_box(chunk.num_dims()),
+                    black_box(chunk.num_vecs()),
+                    black_box(&mut reference),
+                )
+            });
         });
     }
     group.finish();
