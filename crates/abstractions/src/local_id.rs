@@ -1,3 +1,8 @@
+//! Provides an ID type for identifying entities local to an instance.
+
+#![deny(missing_docs)]
+#![deny(clippy::missing_docs_in_private_items)]
+
 use std::fmt::{Debug, Display, Formatter};
 use std::num::NonZeroUsize;
 
@@ -9,6 +14,14 @@ pub struct LocalId(NonZeroUsize);
 impl LocalId {
     /// Creates an ID without checking whether the provided
     /// value is non-zero.
+    ///
+    /// This results in undefined behavior if the value is zero.
+    ///
+    /// ## Arguments
+    /// * `id` - The nonzero value to wrap.
+    ///
+    /// ## Safety
+    /// The value `id` must be nonzero.
     ///
     /// ## Example
     /// ```
@@ -83,17 +96,17 @@ impl From<NonZeroUsize> for LocalId {
     }
 }
 
-impl Into<NonZeroUsize> for LocalId {
+impl From<LocalId> for NonZeroUsize {
     #[inline(always)]
-    fn into(self) -> NonZeroUsize {
-        self.0
+    fn from(value: LocalId) -> Self {
+        value.0
     }
 }
 
-impl Into<usize> for LocalId {
+impl From<LocalId> for usize {
     #[inline(always)]
-    fn into(self) -> usize {
-        self.0.get()
+    fn from(value: LocalId) -> Self {
+        value.0.get()
     }
 }
 

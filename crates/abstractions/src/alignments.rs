@@ -1,3 +1,6 @@
+//! Provides helpers to ensure proper alignment of pointers and references
+//! for use with AVX-2 and AVX-512.
+
 #![deny(missing_docs)]
 #![deny(clippy::missing_docs_in_private_items)]
 
@@ -13,6 +16,7 @@ pub trait Alignment {
 /// Determines whether the specified value is a multiple of 32.
 #[inline(always)]
 const fn is_multiple_of_32(value: usize) -> bool {
+    /// A 32-byte aligned address has the lower 31 bits set to zero.
     const MASK: usize = 32 - 1;
     0 == value & MASK
 }
@@ -20,6 +24,7 @@ const fn is_multiple_of_32(value: usize) -> bool {
 /// Determines whether the specified value is a multiple of 64.
 #[inline(always)]
 const fn is_multiple_of_64(value: usize) -> bool {
+    /// A 64-byte aligned address has the lower 63 bits set to zero.
     const MASK: usize = 64 - 1;
     0 == value & MASK
 }

@@ -79,11 +79,11 @@ pub fn get_opencl_selection(matches: &ArgMatches) -> Option<OpenClDeviceSelectio
     let name = platform.name().unwrap_or(String::from("(unnamed)"));
     println!(
         "Using OpenCL platform {pid}: {name}",
-        pid = format!("{}", pid).green(),
+        pid = pid.to_string().green(),
         name = name.green()
     );
 
-    let devices = match Device::list_all(&platform) {
+    let devices = match Device::list_all(platform) {
         Ok(devices) => devices,
         Err(e) => {
             eprintln!("The selected platform has no available devices: {e}");
@@ -94,8 +94,8 @@ pub fn get_opencl_selection(matches: &ArgMatches) -> Option<OpenClDeviceSelectio
     if did >= devices.len() {
         eprintln!(
             "Unable to select device {did} for platform {pid}",
-            did = format!("{}", did).blue(),
-            pid = format!("{}", pid).green()
+            did = did.to_string().blue(),
+            pid = pid.to_string().green()
         );
         return None;
     }
@@ -104,8 +104,8 @@ pub fn get_opencl_selection(matches: &ArgMatches) -> Option<OpenClDeviceSelectio
     let name = device.name().unwrap_or(String::from("(unnamed)"));
     println!(
         "Using OpenCL platform {pid}'s device {did}: {name}",
-        pid = format!("{}", pid).green(),
-        did = format!("{}", did).blue(),
+        pid = pid.to_string().green(),
+        did = did.to_string().blue(),
         name = name.blue()
     );
 

@@ -170,11 +170,7 @@ enum SelectedChunk {
 
 impl SelectedChunk {
     pub fn is_allocated(&self) -> bool {
-        if let Self::AllocatedNew(_) = self {
-            true
-        } else {
-            false
-        }
+        matches!(self, Self::AllocatedNew(_))
     }
 
     #[inline(always)]
@@ -194,16 +190,22 @@ impl Deref for SelectedChunk {
     }
 }
 
-impl Into<ChunkIndex> for SelectedChunk {
+impl From<SelectedChunk> for ChunkIndex {
     #[inline(always)]
-    fn into(self) -> ChunkIndex {
-        *self
+    fn from(value: SelectedChunk) -> Self {
+        value.get()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn is_allocated_works() {
+        assert!(SelectedChunk::AllocatedNew(ChunkIndex::new(12)).is_allocated());
+        assert!(!SelectedChunk::Reused(ChunkIndex::new(12)).is_allocated());
+    }
 
     #[test]
     fn default_num_dims_works() {

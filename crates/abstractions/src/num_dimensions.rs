@@ -1,3 +1,8 @@
+//! Provide type-safe specification of vector dimensionality.
+
+#![deny(missing_docs)]
+#![deny(clippy::missing_docs_in_private_items)]
+
 use std::fmt::{Display, Formatter};
 use std::num::{NonZeroU32, NonZeroUsize};
 use std::ops::{Deref, Mul, Range};
@@ -61,10 +66,10 @@ impl From<NonZeroU32> for NumDimensions {
     }
 }
 
-impl Into<usize> for NumDimensions {
+impl From<NumDimensions> for usize {
     #[inline(always)]
-    fn into(self) -> usize {
-        self.0
+    fn from(value: NumDimensions) -> Self {
+        value.0
     }
 }
 

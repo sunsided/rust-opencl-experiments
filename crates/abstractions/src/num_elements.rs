@@ -1,3 +1,8 @@
+//! Provide type-safe specification of element counts such as number of elements in a matrix.
+
+#![deny(missing_docs)]
+#![deny(clippy::missing_docs_in_private_items)]
+
 use crate::{NumDimensions, NumVectors};
 use std::fmt::{Display, Formatter};
 use std::num::{NonZeroU32, NonZeroUsize};
@@ -59,10 +64,10 @@ impl From<NonZeroU32> for NumElements {
     }
 }
 
-impl Into<usize> for NumElements {
+impl From<NumElements> for usize {
     #[inline(always)]
-    fn into(self) -> usize {
-        self.0
+    fn from(value: NumElements) -> Self {
+        value.0
     }
 }
 

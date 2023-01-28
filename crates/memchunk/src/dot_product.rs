@@ -41,7 +41,6 @@ impl DotProduct for ReferenceDotProduct {
             "data buffer dimension mismatch"
         );
 
-        let data: &[f32] = data.as_ref();
         for (v, result) in results.iter_mut().enumerate() {
             let start_index = v * num_dims;
 
@@ -75,7 +74,6 @@ impl DotProduct for ReferenceDotProductParallel {
             "data buffer dimension mismatch"
         );
 
-        let data: &[f32] = data.as_ref();
         results
             .par_iter_mut()
             .enumerate()
@@ -112,7 +110,6 @@ impl<const UNROLL_FACTOR: usize> DotProduct for ReferenceDotProductUnrolled<UNRO
             "data buffer dimension mismatch"
         );
 
-        let data: &[f32] = data.as_ref();
         for (v, result) in results.iter_mut().enumerate() {
             let start_index = v * num_dims;
 

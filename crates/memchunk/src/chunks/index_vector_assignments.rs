@@ -78,7 +78,7 @@ impl IndexVectorAssignment {
     #[inline(always)]
     pub fn replace(&mut self, index: usize, value: Option<LocalId>) -> Option<LocalId> {
         let slot = &mut self.assignments[index];
-        let previous = slot.clone();
+        let previous = *slot;
         *slot = value;
 
         // If an empty v is overwritten with a value, we increase the count.

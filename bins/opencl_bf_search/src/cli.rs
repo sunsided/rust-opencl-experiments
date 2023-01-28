@@ -1,5 +1,5 @@
 use clap::{Arg, ArgAction, ArgMatches, Command, ValueHint};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub fn match_cli_arguments() -> ArgMatches {
     let command = Command::new("OpenCL Streaming Vector Dot Products")
@@ -81,7 +81,7 @@ fn file_valid(s: &str) -> Result<PathBuf, String> {
 }
 
 /// Expands environment variables and shell tokens such as `~` (for the home directory).
-fn shellexpand_path(path: &PathBuf) -> Result<PathBuf, String> {
+fn shellexpand_path(path: &Path) -> Result<PathBuf, String> {
     let str = path.to_str().ok_or("Unable to represent path")?;
     let str = shellexpand::full(str).map_err(|_| "Unable to expand path components")?;
     Ok(PathBuf::from(str.to_string()))
@@ -115,7 +115,7 @@ fn ocl_device_valid(s: &str) -> Result<usize, String> {
 
     if !platforms
         .iter()
-        .flat_map(|p| ocl::Device::list_all(p))
+        .flat_map(ocl::Device::list_all)
         .any(|d| id < d.len())
     {
         return Err(String::from("No platform supports the specified ID"));

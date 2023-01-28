@@ -24,9 +24,8 @@ impl TopK for NaiveBubble {
         let mut results = [Entry::from((0usize, -1.0f32)); K];
         let last_idx = K - 1;
 
-        for i in 0..values.len() {
+        for (i, &v) in values.iter().enumerate() {
             // Ignore all values that are smaller than the last entry in the list.
-            let v = values[i];
             if v <= results[last_idx].value {
                 continue;
             }
@@ -62,8 +61,7 @@ impl TopK for NaiveUnstable {
         }
 
         // Scan for values bigger than our current maximum.
-        for i in K..values.len() {
-            let v = values[i];
+        for (i, &v) in values.iter().enumerate().take(K) {
             if v <= min {
                 continue;
             }
@@ -71,16 +69,16 @@ impl TopK for NaiveUnstable {
             // We found a value bigger than the smallest value we know.
             // Replace the smallest value with the new one.
             let mut new_min = f32::MAX;
-            for j in 0..K {
-                if results[j].value == min {
-                    results[j] = (i, v).into();
+            for result in results.iter_mut().take(K) {
+                if result.value == min {
+                    *result = (i, v).into();
 
                     // Prevent condition from triggering again.
                     min = f32::MAX;
                 }
 
                 // Determine the new smallest value.
-                new_min = new_min.min(results[j].value);
+                new_min = new_min.min(result.value);
             }
 
             min = new_min;
@@ -95,7 +93,7 @@ impl TopK for QuickSelect {
     fn topk<const K: usize>(values: &mut [f32]) -> [Entry; K] {
         let mut indexes: Vec<_> = (0..values.len()).collect();
         let _ = quickselect_max(values, &mut indexes, K);
-        merge_into(&values, &indexes)
+        merge_into(values, &indexes)
     }
 }
 
@@ -141,14 +139,11 @@ fn quickselect_max(data: &mut [f32], indexes: &mut [usize], k: usize) -> Entry {
     let mut right = data.len() - 1;
 
     loop {
-        let pivot_index = partition_max(data, indexes, left, right);
-        if pivot_index == k {
-            return Entry::new(k, data[k]);
-        } else if k < pivot_index {
-            right = pivot_index - 1;
-        } else {
-            left = pivot_index + 1;
-        }
+        match partition_max(data, indexes, left, right) {
+            pivot_index if k < pivot_index => right = pivot_index - 1,
+            pivot_index if k > pivot_index => left = pivot_index + 1,
+            k => return Entry::new(k, data[k]),
+        };
     }
 }
 
@@ -180,13 +175,13 @@ impl TopK for MinHeap {
         let mut heap = std::collections::BinaryHeap::new();
 
         // Insert the first K elements into the heap
-        for i in 0..K {
-            heap.push(std::cmp::Reverse(Entry::new(i, values[i])));
+        for (i, &v) in values.iter().enumerate().take(K) {
+            heap.push(std::cmp::Reverse(Entry::new(i, v)));
         }
 
         // Insert the rest of the elements into the heap and pop off the smallest element
-        for i in K..values.len() {
-            heap.push(std::cmp::Reverse(Entry::new(i, values[i])));
+        for (i, &v) in values.iter().enumerate().skip(K) {
+            heap.push(std::cmp::Reverse(Entry::new(i, v)));
             heap.pop();
         }
 
@@ -214,9 +209,9 @@ impl Entry {
     }
 }
 
-impl Into<(usize, f32)> for Entry {
-    fn into(self) -> (usize, f32) {
-        (self.index, self.value)
+impl From<Entry> for (usize, f32) {
+    fn from(value: Entry) -> Self {
+        (value.index, value.value)
     }
 }
 

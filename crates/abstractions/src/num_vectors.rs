@@ -1,3 +1,8 @@
+//! Provide type-safe specification of vector counts.
+
+#![deny(missing_docs)]
+#![deny(clippy::missing_docs_in_private_items)]
+
 use std::fmt::{Display, Formatter};
 use std::num::{NonZeroU32, NonZeroUsize};
 use std::ops::{Deref, Mul, Range};
@@ -58,10 +63,10 @@ impl From<NonZeroU32> for NumVectors {
     }
 }
 
-impl Into<usize> for NumVectors {
+impl From<NumVectors> for usize {
     #[inline(always)]
-    fn into(self) -> usize {
-        self.0
+    fn from(value: NumVectors) -> Self {
+        value.0
     }
 }
 

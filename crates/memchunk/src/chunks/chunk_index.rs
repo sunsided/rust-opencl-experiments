@@ -21,9 +21,3 @@ impl From<usize> for ChunkIndex {
         Self::new(value)
     }
 }
-
-impl Into<usize> for ChunkIndex {
-    fn into(self) -> usize {
-        self.0
-    }
-}
