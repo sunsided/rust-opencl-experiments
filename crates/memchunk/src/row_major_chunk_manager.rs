@@ -1,8 +1,7 @@
-use crate::alignments::Alignment;
 use crate::chunk_manager::{BaseChunkManager, ChunkManager};
 use crate::fixed_size_memory_chunk::AccessHint;
 use crate::InsertVectorError;
-use abstractions::{LocalId, NumDimensions, NumVectors};
+use abstractions::{Alignment, LocalId, NumDimensions, NumVectors};
 
 /// A chunk manager that stores vectors in row-major order.
 pub struct RowMajorChunkManager {

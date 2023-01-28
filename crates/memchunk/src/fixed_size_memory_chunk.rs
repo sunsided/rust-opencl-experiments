@@ -1,4 +1,4 @@
-use crate::alignments::Alignment;
+use abstractions::Alignment;
 use alloc_madvise::Memory;
 use std::ops::{Deref, DerefMut};
 

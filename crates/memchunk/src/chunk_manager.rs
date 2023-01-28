@@ -2,7 +2,7 @@ use crate::chunk_index::ChunkIndex;
 use crate::chunk_vector::ChunkVector;
 use crate::fixed_size_memory_chunk::{AccessHint, FixedSizeMemoryChunk};
 use crate::index_vector_assignments::IndexVectorAssignments;
-use crate::local_id_registry::IdRegistry;
+use crate::utils::IdRegistry;
 use crate::InsertVectorError;
 use abstractions::{LocalId, NumDimensions, NumVectors};
 use std::ops::Deref;
@@ -119,8 +119,7 @@ impl BaseChunkManager {
         let target_slot = assignments.len();
         let _previous_value = assignments.replace(target_slot, Some(id));
         debug_assert_eq!(
-            _previous_value,
-            None,
+            _previous_value, None,
             "Overwrote slot that was already in use"
         );
 
