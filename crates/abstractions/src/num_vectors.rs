@@ -9,7 +9,10 @@ use std::ops::{Deref, Mul, Range};
 
 /// Describes the number of vectors.
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct NumVectors(usize);
+pub struct NumVectors(
+    /// The wrapped number of vectors.
+    usize,
+);
 
 impl NumVectors {
     /// Generates a range of elements from `0` to the represented number.

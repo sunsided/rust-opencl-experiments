@@ -1,7 +1,18 @@
+//! Reference implementations of matrix-vector dot products.
+
 use abstractions::{NumDimensions, NumVectors};
 use rayon::prelude::*;
 
+/// Performs matrix-vector dot product calculations.
 pub trait DotProduct {
+    /// Calculates the dot product of the specified `query` vector against the `data` array.
+    ///
+    /// ## Argumens
+    /// * `query` - The query vector of length `D` (`num_dims`).
+    /// * `data` - The data matrix of `N` (`num_vecs`) vectors of length `D` (total size `N×D`).
+    /// * `num_dims` - The dimensionality `D` of each vector.
+    /// * `num_vecs` - The number of vectors in the `data` array.
+    /// * `results` The results buffer of length `M` (`num_vecs`) to fill.
     fn dot_product(
         &self,
         query: &[f32],
@@ -12,12 +23,20 @@ pub trait DotProduct {
     );
 }
 
+/// A naive matrix-vector dot product implementation.
 #[derive(Default)]
 pub struct ReferenceDotProduct {}
 
+/// A naive matrix-vector dot product implementation using parallel computation of each vector.
+///
+/// Uses Rayon's [`IntoParallelIterator`] for the heavy lifting.
 #[derive(Default)]
 pub struct ReferenceDotProductParallel {}
 
+/// Unrolled implementation of [`ReferenceDotProduct`].
+///
+/// ## Generic Arguments
+/// * `UNROLL_FACTOR` - How many vector elements calculations to unroll.
 #[derive(Default)]
 pub struct ReferenceDotProductUnrolled<const UNROLL_FACTOR: usize = 8> {}
 
@@ -124,6 +143,14 @@ impl<const UNROLL_FACTOR: usize> DotProduct for ReferenceDotProductUnrolled<UNRO
 }
 
 impl<const UNROLL_FACTOR: usize> ReferenceDotProductUnrolled<UNROLL_FACTOR> {
+    /// Helper function to perform an unrolled dot product of two vectors.
+    ///
+    /// ## Arguments
+    /// * `query` - The query vector.
+    /// * `data` - The reference matrix.
+    /// * `query_start_index` - The starting index in the query vector.
+    /// * `data_start_index` - The starting index in the `data` matrix.
+    /// * `sum` - The array of sums to update.
     #[inline(always)]
     #[unroll::unroll_for_loops]
     fn unrolled_dots(
@@ -148,6 +175,25 @@ mod tests {
     #[test]
     fn simple_works() {
         let reference = ReferenceDotProduct::default();
+
+        let query = vec![1., 2., 3.];
+        let data = vec![4., -5., 6., 4., -5., 6., 0., 0., 0., 1., 1., 1.];
+        let mut results = vec![0., 0., 0., 0.];
+
+        reference.dot_product(
+            &query,
+            &data,
+            NumDimensions::from(3u32),
+            NumVectors::from(4u32),
+            &mut results,
+        );
+
+        assert_eq!(results, [12., 12., 0., 6.])
+    }
+
+    #[test]
+    fn unrolled_works() {
+        let reference = ReferenceDotProductUnrolled::<3>::default();
 
         let query = vec![1., 2., 3.];
         let data = vec![4., -5., 6., 4., -5., 6., 0., 0., 0., 1., 1., 1.];

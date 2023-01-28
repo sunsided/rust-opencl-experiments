@@ -10,7 +10,10 @@ use std::ops::{Deref, Mul, Range};
 
 /// Describes a number of elements.
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct NumElements(usize);
+pub struct NumElements(
+    /// The wrapped number of elements.
+    usize,
+);
 
 impl NumElements {
     /// Generates a range of elements from `0` to the represented number.

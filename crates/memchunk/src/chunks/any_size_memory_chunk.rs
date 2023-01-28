@@ -1,6 +1,10 @@
+//! Provides memory chunks of arbitrary sizes.
+
+use crate::chunks::AccessHint;
 use abstractions::{NumDimensions, NumVectors};
 use alloc_madvise::Memory;
 
+/// A memory chunk whose size is specified at runtime.
 #[derive(Debug)]
 pub struct AnySizeMemoryChunk {
     num_vecs: usize,
@@ -10,7 +14,20 @@ pub struct AnySizeMemoryChunk {
 }
 
 impl AnySizeMemoryChunk {
-    pub fn new(num_vectors: NumVectors, num_dimensions: NumDimensions) -> Self {
+    /// Initializes a new memory chunk.
+    ///
+    /// ## Arguments
+    /// * `num_vectors`: The number of vectors to store.
+    /// * `num_dimensions`: The number of dimensions per vector. Must be a multiple of 16.
+    /// * `access_hint`: Specifies the intended access pattern.
+    ///
+    /// ## Panics
+    /// Will panic if the number of vector dimensions is not a multiple of 16.
+    pub fn new(
+        num_vectors: NumVectors,
+        num_dimensions: NumDimensions,
+        access_hint: AccessHint,
+    ) -> Self {
         assert_eq!(
             *num_dimensions % 16,
             0,
@@ -19,7 +36,8 @@ impl AnySizeMemoryChunk {
 
         let num_elems = num_vectors * num_dimensions;
         let num_bytes = num_elems * std::mem::size_of::<f32>();
-        let chunk = Memory::allocate(num_bytes, false, true).expect("memory allocation failed");
+        let chunk = Memory::allocate(num_bytes, access_hint.is_sequential(), true)
+            .expect("memory allocation failed");
 
         Self {
             data: chunk,

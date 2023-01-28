@@ -7,9 +7,14 @@ use std::fmt::{Display, Formatter};
 use std::num::{NonZeroU32, NonZeroUsize};
 use std::ops::{Deref, Mul, Range};
 
+// TODO: Enforce that vector dimensionality is a multiple of 16.
+
 /// Describes the dimensionality of a vector, i.e. the number of its entries.
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct NumDimensions(usize);
+pub struct NumDimensions(
+    /// The wrapped number of dimensions.
+    usize,
+);
 
 impl NumDimensions {
     /// A 384-dimensional entity.

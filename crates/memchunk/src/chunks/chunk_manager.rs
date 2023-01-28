@@ -1,7 +1,8 @@
 use crate::chunks::chunk_index::ChunkIndex;
 use crate::chunks::chunk_vector::ChunkVector;
-use crate::chunks::fixed_size_memory_chunk::{AccessHint, FixedSizeMemoryChunk};
+use crate::chunks::fixed_size_memory_chunk::FixedSizeMemoryChunk;
 use crate::chunks::index_vector_assignments::IndexVectorAssignments;
+use crate::chunks::AccessHint;
 use crate::utils::IdRegistry;
 use crate::InsertVectorError;
 use abstractions::{LocalId, NumDimensions, NumVectors};
@@ -33,7 +34,7 @@ pub trait ChunkManager {
 }
 
 /// The [`BaseChunkManager`] provides functionality shared between more
-/// specialized managers, such as the [`RowMajorChunkManager`](crate::RowMajorChunkManager) type.
+/// specialized managers, such as the [`RowMajorChunkManager`](crate::chunks::RowMajorChunkManager) type.
 pub(crate) struct BaseChunkManager {
     num_dims: NumDimensions,
     num_vecs_per_chunk: NumVectors,
@@ -134,14 +135,12 @@ impl BaseChunkManager {
     }
 
     /// Gets the number of registered chunks.
-    #[cfg(debug_assertions)]
     pub fn num_chunks(&self) -> usize {
         debug_assert_eq!(self.chunks.len(), self.assignments.len());
         self.chunks.len()
     }
 
     /// Gets the number of vectors in the specified chunk.
-    #[cfg(debug_assertions)]
     fn chunk_vector_count(&self, idx: ChunkIndex) -> usize {
         self.assignments[idx].len()
     }

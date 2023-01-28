@@ -9,7 +9,10 @@ use std::num::NonZeroUsize;
 /// A node-local vector ID. The wrapped type is a non-zero, allowing
 /// the internal use of the value `0` as a marker for unused elements.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct LocalId(NonZeroUsize);
+pub struct LocalId(
+    /// The wrapped ID.
+    NonZeroUsize,
+);
 
 impl LocalId {
     /// Creates an ID without checking whether the provided

@@ -1,8 +1,17 @@
+//! Provides memory chunks of fixed sizes.
+//!
+//! See [`CHUNK_SIZE_BYTES`] for the actual size depending on the selected crate features.
+
+use crate::chunks::AccessHint;
 use abstractions::Alignment;
 use alloc_madvise::Memory;
 use std::ops::{Deref, DerefMut};
 
 /// The number of bytes in a memory chunk.
+///
+/// ## Features
+/// - `power-of-two-chunks`: If enabled, the fixed buffer size will be `33_554_432` bytes (32 MiB);
+///     if disabled, the buffer size is `33_374_208`. See below for reasoning.
 ///
 /// ## Chunk size considerations
 /// Typical vector lengths in question include 256, 384, 512, 768, 1024, 1536, 1792 and 2048,
@@ -26,21 +35,8 @@ pub struct FixedSizeMemoryChunk {
     data: Memory,
 }
 
-/// Hints at the intended memory access pattern.
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
-pub enum AccessHint {
-    /// Memory access will be mostly or entirely sequential.
-    Sequential,
-    /// Memory access follows no sequential pattern.
-    Random,
-}
-
-impl Default for AccessHint {
-    fn default() -> Self {
-        Self::Random
-    }
-}
-
+/// A memory chunk whose size is defined at compile time. See [`crate::chunks::fixed_size_memory_chunk::CHUNK_SIZE_BYTES`] for the
+/// specifics.
 impl FixedSizeMemoryChunk {
     /// The number of bytes in this memory chunk.
     pub const SIZE_BYTES: usize = CHUNK_SIZE_BYTES;
@@ -49,7 +45,7 @@ impl FixedSizeMemoryChunk {
     pub const NUM_FLOATS: usize = CHUNK_NUM_FLOATS;
 
     pub fn allocate(access_pattern: AccessHint) -> Self {
-        let sequential = access_pattern == AccessHint::Sequential;
+        let sequential = access_pattern.is_sequential();
         let chunk =
             Memory::allocate(Self::SIZE_BYTES, sequential, true).expect("memory allocation failed");
         debug_assert!((chunk.as_ptr() as *const f32).is_64byte_aligned());

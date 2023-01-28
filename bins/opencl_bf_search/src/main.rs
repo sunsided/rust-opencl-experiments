@@ -7,7 +7,10 @@ use crate::cli::match_cli_arguments;
 use crate::opencl::{
     build_dot_product_program, get_opencl_selection, ocl_print_platforms, OpenClDeviceSelection,
 };
-use memchunk::{chunks::AnySizeMemoryChunk, DotProduct, ReferenceDotProductParallel};
+use memchunk::{
+    chunks::{any_size_memory_chunk::AnySizeMemoryChunk, AccessHint},
+    DotProduct, ReferenceDotProductParallel,
+};
 use ocl::{Buffer, Context, Kernel, MemFlags, Queue};
 use std::path::PathBuf;
 use std::time::Instant;
@@ -215,7 +218,7 @@ async fn load_vectors(db_file: &PathBuf, sample_size: usize) -> AnySizeMemoryChu
     })
     .into();
 
-    let mut chunk = AnySizeMemoryChunk::new(sample_size, db.num_dimensions);
+    let mut chunk = AnySizeMemoryChunk::new(sample_size, db.num_dimensions, AccessHint::Sequential);
     let data = chunk.as_mut();
 
     println!("Loading {sample_size} elements from vector database ...");

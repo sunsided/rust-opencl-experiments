@@ -1,4 +1,4 @@
-use crate::chunks::FixedSizeMemoryChunk;
+use crate::chunks::fixed_size_memory_chunk::FixedSizeMemoryChunk;
 
 pub struct RowMajorMatrixView<const COLS: usize> {
     pub memory: FixedSizeMemoryChunk,
