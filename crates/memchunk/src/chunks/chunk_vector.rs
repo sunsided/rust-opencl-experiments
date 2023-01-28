@@ -1,5 +1,5 @@
-use crate::chunk_index::ChunkIndex;
-use crate::fixed_size_memory_chunk::{AccessHint, FixedSizeMemoryChunk};
+use crate::chunks::chunk_index::ChunkIndex;
+use crate::chunks::fixed_size_memory_chunk::{AccessHint, FixedSizeMemoryChunk};
 use std::ops::{Index, IndexMut};
 
 /// Vector of chunk entries, indexed by [`ChunkIndex`].

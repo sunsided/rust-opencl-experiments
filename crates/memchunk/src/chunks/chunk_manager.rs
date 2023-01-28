@@ -1,7 +1,7 @@
-use crate::chunk_index::ChunkIndex;
-use crate::chunk_vector::ChunkVector;
-use crate::fixed_size_memory_chunk::{AccessHint, FixedSizeMemoryChunk};
-use crate::index_vector_assignments::IndexVectorAssignments;
+use crate::chunks::chunk_index::ChunkIndex;
+use crate::chunks::chunk_vector::ChunkVector;
+use crate::chunks::fixed_size_memory_chunk::{AccessHint, FixedSizeMemoryChunk};
+use crate::chunks::index_vector_assignments::IndexVectorAssignments;
 use crate::utils::IdRegistry;
 use crate::InsertVectorError;
 use abstractions::{LocalId, NumDimensions, NumVectors};

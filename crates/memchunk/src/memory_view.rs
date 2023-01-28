@@ -1,4 +1,4 @@
-use crate::fixed_size_memory_chunk::FixedSizeMemoryChunk;
+use crate::chunks::FixedSizeMemoryChunk;
 
 pub struct RowMajorMatrixView<const COLS: usize> {
     pub memory: FixedSizeMemoryChunk,
@@ -52,7 +52,7 @@ impl<const COLS: usize> RowMajorMatrixView<COLS> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fixed_size_memory_chunk::{AccessHint, FixedSizeMemoryChunk};
+    use crate::chunks::AccessHint;
 
     #[test]
     fn creating_view_works() {

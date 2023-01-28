@@ -1,5 +1,5 @@
-use crate::chunk_manager::{BaseChunkManager, ChunkManager};
-use crate::fixed_size_memory_chunk::AccessHint;
+use crate::chunks::chunk_manager::{BaseChunkManager, ChunkManager};
+use crate::chunks::fixed_size_memory_chunk::AccessHint;
 use crate::InsertVectorError;
 use abstractions::{Alignment, LocalId, NumDimensions, NumVectors};
 
