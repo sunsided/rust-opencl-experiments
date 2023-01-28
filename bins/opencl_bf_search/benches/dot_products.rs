@@ -1,7 +1,10 @@
 use criterion::Criterion;
 use criterion::{criterion_group, criterion_main};
 use criterion::{BenchmarkId, Throughput};
-use memchunk::{AnySizeMemoryChunk, DotProduct, ReferenceDotProduct, ReferenceDotProductUnrolled};
+use memchunk::{
+    chunks::{any_size_memory_chunk::AnySizeMemoryChunk, AccessHint},
+    DotProduct, ReferenceDotProduct, ReferenceDotProductParallel, ReferenceDotProductUnrolled,
+};
 use std::hint::black_box;
 use std::path::PathBuf;
 use vecdb::VecDb;
@@ -19,6 +22,28 @@ fn from_elem(c: &mut Criterion) {
         chunk.use_num_vecs((*size).into());
 
         let algo = ReferenceDotProduct::default();
+        let mut reference = vec![0.0; chunk.num_vecs().get()];
+
+        group.bench_function(BenchmarkId::from_parameter(size), |b| {
+            b.iter(|| {
+                algo.dot_product(
+                    black_box(&first_vec),
+                    black_box(chunk.as_ref()),
+                    black_box(chunk.num_dims()),
+                    black_box(chunk.num_vecs()),
+                    black_box(&mut reference),
+                )
+            });
+        });
+    }
+    group.finish();
+
+    let mut group = c.benchmark_group("search_naive_parallel");
+    for size in sizes.iter() {
+        group.throughput(Throughput::Elements(*size as u64));
+        chunk.use_num_vecs((*size).into());
+
+        let algo = ReferenceDotProductParallel::default();
         let mut reference = vec![0.0; chunk.num_vecs().get()];
 
         group.bench_function(BenchmarkId::from_parameter(size), |b| {
@@ -78,6 +103,29 @@ fn from_elem(c: &mut Criterion) {
         });
     }
     group.finish();
+
+    let mut group = c.benchmark_group("search_unrolled::<64>");
+    for size in sizes.iter() {
+        group.throughput(Throughput::Elements(*size as u64));
+        chunk.use_num_vecs((*size).into());
+
+        let algo = ReferenceDotProductUnrolled::<64>::default();
+        let mut reference = vec![0.0; chunk.num_vecs().get()];
+
+        group.bench_function(BenchmarkId::from_parameter(size), |b| {
+            b.iter(|| {
+                algo.dot_product(
+                    black_box(&first_vec),
+                    black_box(chunk.as_ref()),
+                    black_box(chunk.num_dims()),
+                    black_box(chunk.num_vecs()),
+                    black_box(&mut reference),
+                )
+            });
+        });
+    }
+
+    group.finish();
 }
 
 async fn load_vectors(sample_size: usize) -> AnySizeMemoryChunk {
@@ -97,7 +145,7 @@ async fn load_vectors(sample_size: usize) -> AnySizeMemoryChunk {
     })
     .into();
 
-    let mut chunk = AnySizeMemoryChunk::new(sample_size, db.num_dimensions);
+    let mut chunk = AnySizeMemoryChunk::new(sample_size, db.num_dimensions, AccessHint::Sequential);
     let data = chunk.as_mut();
 
     println!("Loading {sample_size} elements from vector database ...");
