@@ -56,7 +56,7 @@ mod tests {
 
     #[test]
     fn creating_view_works() {
-        let chunk = FixedSizeMemoryChunk::allocate(AccessHint::Seqential);
+        let chunk = FixedSizeMemoryChunk::allocate(AccessHint::Sequential);
         let view = RowMajorMatrixView::<384>::wrap(chunk);
 
         let expected_vecs = if cfg!(feature = "power-of-two-chunks") {

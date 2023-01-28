@@ -30,7 +30,7 @@ pub struct FixedSizeMemoryChunk {
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum AccessHint {
     /// Memory access will be mostly or entirely sequential.
-    Seqential,
+    Sequential,
     /// Memory access follows no sequential pattern.
     Random,
 }
@@ -49,7 +49,7 @@ impl FixedSizeMemoryChunk {
     pub const NUM_FLOATS: usize = CHUNK_NUM_FLOATS;
 
     pub fn allocate(access_pattern: AccessHint) -> Self {
-        let sequential = access_pattern == AccessHint::Seqential;
+        let sequential = access_pattern == AccessHint::Sequential;
         let chunk =
             Memory::allocate(Self::SIZE_BYTES, sequential, true).expect("memory allocation failed");
         debug_assert!((chunk.as_ptr() as *const f32).is_64byte_aligned());
