@@ -1,6 +1,7 @@
 use abstractions::{NumDimensions, NumVectors};
 
 pub mod reference;
+pub mod reference_parallel;
 pub mod topk;
 
 /// Performs matrix-vector dot product calculations.

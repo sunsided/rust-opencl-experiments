@@ -7,7 +7,8 @@ use crate::cli::match_cli_arguments;
 use crate::opencl::{
     build_dot_product_program, get_opencl_selection, ocl_print_platforms, OpenClDeviceSelection,
 };
-use dot_products::{reference::ReferenceDotProductParallel, DotProduct};
+use dot_products::reference_parallel::ReferenceDotProductParallel;
+use dot_products::DotProduct;
 use memchunk::chunks::{any_size_memory_chunk::AnySizeMemoryChunk, AccessHint};
 use ocl::{Buffer, Context, Kernel, MemFlags, Queue};
 use std::path::PathBuf;
