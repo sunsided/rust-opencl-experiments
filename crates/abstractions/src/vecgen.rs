@@ -45,7 +45,7 @@ impl Vecgen {
     }
 
     /// Forks this rng to create a new instance capable of creating
-    /// 2^64 non-overlapping floating-point numbers.
+    /// 2^64 (18'446'744'073'709'551'616) non-overlapping floating-point numbers.
     pub fn fork(&self) -> Self {
         let mut rng = self.rng.clone();
         rng.jump();
