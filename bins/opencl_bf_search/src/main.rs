@@ -9,7 +9,7 @@ use crate::opencl::{
 use dot_products::reference_parallel::ReferenceDotProductParallel;
 use dot_products::DotProduct;
 use memchunk::chunks::{any_size_memory_chunk::AnySizeMemoryChunk, AccessHint};
-use ocl::{Buffer, Context, Event, EventList, Kernel, MemFlags, Queue};
+use ocl::{Buffer, CommandQueueProperties, Context, Event, EventList, Kernel, MemFlags, Queue};
 use std::path::PathBuf;
 use std::time::Instant;
 use vecdb::VecDb;
@@ -98,9 +98,11 @@ async fn main() {
     let dot_product = build_dot_product_program(device, &context).unwrap();
 
     // Create three queues.
-    let matrix_queue = Queue::new(&context, device, None).unwrap();
-    let vector_queue = Queue::new(&context, device, None).unwrap();
-    let result_queue = Queue::new(&context, device, None).unwrap();
+    let properties = CommandQueueProperties::new().out_of_order();
+
+    let matrix_queue = Queue::new(&context, device, Some(properties)).unwrap();
+    let vector_queue = Queue::new(&context, device, Some(properties)).unwrap();
+    let result_queue = Queue::new(&context, device, Some(properties)).unwrap();
     // TODO: Introduce another queue for reducing the results?
 
     // Write matrix data to the device using matrix_queue.
@@ -153,19 +155,21 @@ async fn main() {
     println!("Processing using OpenCL ...");
     let start = Instant::now();
 
+    let mut query_write_event = Event::empty();
+    let mut data_write_event = Event::empty();
+
     // Write the buffer using memory mapping (since pinning isn't supported).
     // This did not provide any noticeable performance benefit on the Intel Iris XE
     // and is kept here only for reference.
     //
     // Moreover, this also seemed to produce empty buffers on an NVidia GTX 980 Ti.
-    /*unsafe {
-        let mut mem_map = matrix_buffer.map().enq().unwrap();
-        mem_map.copy_from_slice(&transposed);
-        mem_map.unmap().enq().unwrap();
-    }*/
-
-    let mut query_write_event = Event::empty();
-    let mut data_write_event = Event::empty();
+    /*
+    unsafe {
+        let mut mem_map = matrix_buffer.cmd().map().enq().unwrap();
+        mem_map.copy_from_slice(transposed.as_ref());
+        mem_map.unmap().enew(&mut data_write_event).enq().unwrap();
+    }
+    */
 
     matrix_buffer
         .cmd()
