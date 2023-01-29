@@ -1,3 +1,5 @@
+//! Vector storage in row-major order.
+
 use crate::chunks::chunk_manager::{BaseChunkManager, ChunkManager};
 use crate::chunks::AccessHint;
 use crate::InsertVectorError;

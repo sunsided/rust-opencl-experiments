@@ -71,10 +71,7 @@ pub mod test_utils {
         index_id: usize,
         chunk: &AnySizeMemoryChunk,
     ) -> Vec<f32> {
-        assert!(
-            index_id < chunk.num_vecs().into(),
-            "Invalid index ID specified"
-        );
+        assert!(index_id < chunk.num_vecs(), "Invalid index ID specified");
 
         let mut results = vec![f32::NAN; chunk.num_vecs().into()];
 

@@ -2,13 +2,19 @@ use crate::chunks::chunk_index::ChunkIndex;
 use abstractions::{LocalId, NumVectors};
 use std::ops::{Index, IndexMut};
 
+/// Provides a set of managed vector IDs per chunk.
 #[derive(Debug, Default)]
 pub(crate) struct IndexVectorAssignments {
+    /// The number of vectors that can be stored per chunk.
     num_vecs_per_chunk: NumVectors,
+    /// Each index of this vector represents a corresponding entry in the
+    /// [`ChunkVector`](crate::chunks::chunk_vector::ChunkVector) type.
     assignments: Vec<IndexVectorAssignment>,
 }
 
 impl IndexVectorAssignments {
+    /// Initializes the type with the number of vectors that can be held per chunk
+    /// and an initial entry.
     pub fn new(num_vecs_per_chunk: NumVectors) -> Self {
         Self {
             num_vecs_per_chunk,
@@ -16,21 +22,25 @@ impl IndexVectorAssignments {
         }
     }
 
+    /// Returns the number of chunks tracked.
     #[inline(always)]
     pub fn len(&self) -> usize {
         self.assignments.len()
     }
 
+    /// Returns true if this vector contains no elements.
     #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.assignments.is_empty()
     }
 
+    /// Returns the last index in this vector, i.e. [`IndexVectorAssignments::len`] reduced by one.
     #[inline(always)]
     pub fn last_index(&self) -> ChunkIndex {
         ChunkIndex::new(self.len() - 1)
     }
 
+    /// Adds another chunk to track and returns its index in this vector.
     pub fn allocate_next(&mut self) -> ChunkIndex {
         self.assignments
             .push(IndexVectorAssignment::new(self.num_vecs_per_chunk));
@@ -55,13 +65,20 @@ impl IndexMut<ChunkIndex> for IndexVectorAssignments {
 /// Registers the used [`LocalId`] for each index.
 #[derive(Debug, Default)]
 pub(crate) struct IndexVectorAssignment {
+    /// The number of vectors allocated to the chunk this instance represents.
     count: usize,
+    /// Each entry represents one (possible) vector assignment in the chunk.
+    /// This vector has a fixed size set at initialization time and will not grow or shrink.
     assignments: Vec<Option<LocalId>>,
 }
 
 impl IndexVectorAssignment {
     /// Creates a new [`IndexVectorAssignment`] instance with the specified number of elements.
     pub fn new(num_vecs: NumVectors) -> Self {
+        debug_assert!(
+            num_vecs > 0,
+            "The number of vectors should be strictly greater than zero"
+        );
         Self {
             count: 0,
             assignments: vec![None; num_vecs.get()],
@@ -99,12 +116,14 @@ impl IndexVectorAssignment {
         self.count
     }
 
+    /// Returns whether the chunk represented by this instance is fully utilized.
     #[inline(always)]
     pub fn is_full(&self) -> bool {
         self.count == self.assignments.len()
     }
 
-    /// Gets the number of elements in this list.
+    /// Returns whether the chunk represented by this instance is completely free, i.e.
+    /// no vector is assigned to it.
     #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.count == 0
