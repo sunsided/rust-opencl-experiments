@@ -13,7 +13,5 @@ optimistic = []
 [dependencies]
 abstractions = { path = "../../crates/abstractions" }
 alloc-madvise = { version = "0.3.0", default-features = false }
-rayon = "1.6.1"
 thiserror = "1.0.38"
 transpose = "0.2.2"
-unroll = "0.1.5"

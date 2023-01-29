@@ -8,16 +8,13 @@ rust-version = "1.66"
 name = "trivial"
 path = "examples/trivial.rs"
 
-[[bench]]
-name = "dot_products"
-harness = false
-
 [features]
 # Enforces that chunk sizes are a power of two.
 power-of-two-chunks = ["memchunk/power-of-two-chunks"]
 
 [dependencies]
 approx = "0.5.1"
+dot-products = { path = "../../crates/dot_products" }
 fmmap = { version = "0.3.2", features = ["tokio", "tokio-async"] }
 ocl = "0.19.4"
 ocl-stream = "0.3.5"

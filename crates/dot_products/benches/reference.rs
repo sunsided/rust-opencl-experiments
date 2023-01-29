@@ -1,10 +1,11 @@
 use criterion::Criterion;
 use criterion::{criterion_group, criterion_main};
 use criterion::{BenchmarkId, Throughput};
-use memchunk::{
-    chunks::{any_size_memory_chunk::AnySizeMemoryChunk, AccessHint},
-    DotProduct, ReferenceDotProduct, ReferenceDotProductParallel, ReferenceDotProductUnrolled,
+use dot_products::reference::{
+    ReferenceDotProduct, ReferenceDotProductParallel, ReferenceDotProductUnrolled,
 };
+use dot_products::DotProduct;
+use memchunk::chunks::{any_size_memory_chunk::AnySizeMemoryChunk, AccessHint};
 use std::hint::black_box;
 use std::path::PathBuf;
 use vecdb::VecDb;

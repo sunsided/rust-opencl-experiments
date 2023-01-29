@@ -472,6 +472,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "dot-products"
+version = "0.1.0"
+dependencies = [
+ "abstractions",
+ "criterion",
+ "memchunk",
+ "rayon",
+ "tokio",
+ "unroll",
+ "vecdb",
+]
+
+[[package]]
 name = "dotenvy"
 version = "0.15.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -957,10 +970,8 @@ version = "0.1.0"
 dependencies = [
  "abstractions",
  "alloc-madvise",
- "rayon",
  "thiserror",
  "transpose",
- "unroll",
 ]
 
 [[package]]
@@ -1199,6 +1210,7 @@ dependencies = [
  "clap 4.1.1",
  "colored",
  "criterion",
+ "dot-products",
  "fmmap",
  "memchunk",
  "ocl",

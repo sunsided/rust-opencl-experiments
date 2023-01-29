@@ -1,0 +1,19 @@
+[package]
+name = "dot-products"
+version = "0.1.0"
+edition = "2021"
+
+[[bench]]
+name = "reference"
+harness = false
+
+[dependencies]
+abstractions = { path = "../../crates/abstractions" }
+rayon = "1.6.1"
+unroll = "0.1.5"
+
+[dev-dependencies]
+criterion = { version = "0.4.0", features = ["async_tokio"] }
+memchunk = { path = "../../crates/memchunk" }
+tokio = { version = "1.24.1", features = ["full"] }
+vecdb = { path = "../../crates/vecdb" }
