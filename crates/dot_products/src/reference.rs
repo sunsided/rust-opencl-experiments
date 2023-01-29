@@ -107,9 +107,13 @@ pub(crate) fn unrolled_dots<const UNROLL_FACTOR: usize>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_utils::{
+        calculate_dot_products, generate_test_vectors, get_reference_results, rmse,
+    };
+    use approx::assert_relative_eq;
 
     #[test]
-    fn simple_works() {
+    fn reference_works() {
         let reference = ReferenceDotProduct::default();
 
         let query = vec![1., 2., 3.];
@@ -129,20 +133,9 @@ mod tests {
 
     #[test]
     fn unrolled_works() {
-        let reference = ReferenceDotProductUnrolled::<3>::default();
-
-        let query = vec![1., 2., 3.];
-        let data = vec![4., -5., 6., 4., -5., 6., 0., 0., 0., 1., 1., 1.];
-        let mut results = vec![0., 0., 0., 0.];
-
-        reference.dot_product(
-            &query,
-            &data,
-            NumDimensions::from(3u32),
-            NumVectors::from(4u32),
-            &mut results,
-        );
-
-        assert_eq!(results, [12., 12., 0., 6.])
+        let chunk = generate_test_vectors();
+        let expected = get_reference_results(0, &chunk);
+        let results = calculate_dot_products::<ReferenceDotProductUnrolled<64>>(0, &chunk);
+        assert_relative_eq!(rmse(results, expected), 0.0, epsilon = 1e-4);
     }
 }

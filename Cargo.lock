@@ -479,6 +479,7 @@ name = "dot-products"
 version = "0.1.0"
 dependencies = [
  "abstractions",
+ "approx",
  "criterion",
  "memchunk",
  "rayon",

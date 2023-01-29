@@ -92,42 +92,24 @@ impl<const UNROLL_FACTOR: usize> DotProduct for ReferenceDotProductParallelUnrol
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_utils::{
+        calculate_dot_products, generate_test_vectors, get_reference_results, rmse,
+    };
+    use approx::assert_relative_eq;
 
     #[test]
     fn parallel_works() {
-        let reference = ReferenceDotProductParallel::default();
-
-        let query = vec![1., 2., 3.];
-        let data = vec![4., -5., 6., 4., -5., 6., 0., 0., 0., 1., 1., 1.];
-        let mut results = vec![0., 0., 0., 0.];
-
-        reference.dot_product(
-            &query,
-            &data,
-            NumDimensions::from(3u32),
-            NumVectors::from(4u32),
-            &mut results,
-        );
-
-        assert_eq!(results, [12., 12., 0., 6.])
+        let chunk = generate_test_vectors();
+        let expected = get_reference_results(0, &chunk);
+        let results = calculate_dot_products::<ReferenceDotProductParallel>(0, &chunk);
+        assert_relative_eq!(rmse(results, expected), 0.0, epsilon = 1e-4);
     }
 
     #[test]
     fn parallel_unrolled_works() {
-        let reference = ReferenceDotProductParallelUnrolled::<3>::default();
-
-        let query = vec![1., 2., 3.];
-        let data = vec![4., -5., 6., 4., -5., 6., 0., 0., 0., 1., 1., 1.];
-        let mut results = vec![0., 0., 0., 0.];
-
-        reference.dot_product(
-            &query,
-            &data,
-            NumDimensions::from(3u32),
-            NumVectors::from(4u32),
-            &mut results,
-        );
-
-        assert_eq!(results, [12., 12., 0., 6.])
+        let chunk = generate_test_vectors();
+        let expected = get_reference_results(0, &chunk);
+        let results = calculate_dot_products::<ReferenceDotProductParallelUnrolled<64>>(0, &chunk);
+        assert_relative_eq!(rmse(results, expected), 0.0, epsilon = 1e-4);
     }
 }

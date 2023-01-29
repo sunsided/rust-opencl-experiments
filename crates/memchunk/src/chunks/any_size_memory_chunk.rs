@@ -3,6 +3,7 @@
 use crate::chunks::AccessHint;
 use abstractions::{NumDimensions, NumVectors};
 use alloc_madvise::Memory;
+use std::borrow::{Borrow, BorrowMut};
 
 /// A memory chunk whose size is specified at runtime.
 #[derive(Debug)]
@@ -113,5 +114,19 @@ impl AsMut<[f32]> for AnySizeMemoryChunk {
     fn as_mut(&mut self) -> &mut [f32] {
         let data: &mut [f32] = self.data.as_mut();
         &mut data[..self.num_dims * self.virt_num_vecs]
+    }
+}
+
+impl Borrow<[f32]> for AnySizeMemoryChunk {
+    #[inline(always)]
+    fn borrow(&self) -> &[f32] {
+        self.as_ref()
+    }
+}
+
+impl BorrowMut<[f32]> for AnySizeMemoryChunk {
+    #[inline(always)]
+    fn borrow_mut(&mut self) -> &mut [f32] {
+        self.as_mut()
     }
 }

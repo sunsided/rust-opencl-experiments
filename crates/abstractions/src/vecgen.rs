@@ -31,8 +31,17 @@ impl Vecgen {
     }
 
     /// Fills a slice with random floating point values.
-    pub fn fill(&mut self, dest: &mut [f32]) {
-        self.rng.fill(dest)
+    #[inline(always)]
+    pub fn fill<Q: AsMut<[f32]> + ?Sized>(&mut self, dest: &mut Q) {
+        self.rng.fill(dest.as_mut())
+    }
+
+    /// Consumes self and fills a buffer with random floating point values,
+    /// returning the buffer.
+    #[inline(always)]
+    pub fn into_filled<Q: AsMut<[f32]>>(mut self, mut dest: Q) -> Q {
+        self.rng.fill(dest.as_mut());
+        dest
     }
 
     /// Forks this rng to create a new instance capable of creating

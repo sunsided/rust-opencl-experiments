@@ -5,6 +5,7 @@
 use crate::chunks::AccessHint;
 use abstractions::Alignment;
 use alloc_madvise::Memory;
+use std::borrow::{Borrow, BorrowMut};
 use std::ops::{Deref, DerefMut};
 
 /// The number of bytes in a memory chunk.
@@ -105,6 +106,20 @@ impl AsMut<ChunkTypeF32> for FixedSizeMemoryChunk {
     fn as_mut(&mut self) -> &mut ChunkTypeF32 {
         let data: &mut [f32] = self.data.as_mut();
         data.try_into().expect("invalid size")
+    }
+}
+
+impl Borrow<[f32]> for FixedSizeMemoryChunk {
+    #[inline(always)]
+    fn borrow(&self) -> &[f32] {
+        self.as_ref()
+    }
+}
+
+impl BorrowMut<[f32]> for FixedSizeMemoryChunk {
+    #[inline(always)]
+    fn borrow_mut(&mut self) -> &mut [f32] {
+        self.as_mut()
     }
 }
 
