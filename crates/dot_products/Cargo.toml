@@ -16,5 +16,5 @@ unroll = "0.1.5"
 approx = "0.5.1"
 criterion = { version = "0.4.0", features = ["async_tokio"] }
 memchunk = { path = "../../crates/memchunk" }
-tokio = { version = "1.24.1", features = ["full"] }
+tokio = { version = "1.24.2", features = ["full"] }
 vecdb = { path = "../../crates/vecdb" }
