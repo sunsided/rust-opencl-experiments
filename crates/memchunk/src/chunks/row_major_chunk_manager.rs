@@ -9,16 +9,32 @@ pub struct RowMajorChunkManager {
 }
 
 impl ChunkManager for RowMajorChunkManager {
+    /// Creates a new manager capable of handling vectors of the specified dimensionality.
+    ///
+    /// ## Arguments
+    /// * `dims` - The number of dimensions of each vector.
+    /// * `access_hint` - The intended access pattern.
     fn new(dims: NumDimensions, access_hint: AccessHint) -> Self {
         Self {
             manager: BaseChunkManager::new(dims, access_hint),
         }
     }
 
+    /// Gets the total number of vectors that can be currently stored.
+    /// This number does not indicate a limit and will change when chunks
+    /// are allocated or deallocated.
     fn max_vecs(&self) -> NumVectors {
         self.manager.max_vecs()
     }
 
+    /// Inserts a vector.
+    ///
+    /// If all managed memory chunks are fully utilized, this will allocate
+    /// a new chunk.
+    ///
+    /// ## Arguments
+    /// * `id` - The ID of the vector.
+    /// * `vector` - The vector to insert.
     fn insert_vector<V: AsRef<[f32]>>(
         &mut self,
         id: LocalId,
@@ -27,7 +43,12 @@ impl ChunkManager for RowMajorChunkManager {
         let num_dims = self.manager.num_dims();
 
         let src = vector.as_ref();
-        debug_assert_eq!(src.len(), num_dims.get());
+        if src.len() != self.manager.num_dims() {
+            return Err(InsertVectorError::DimensionalityMismatch {
+                actual: src.len().into(),
+                expected: self.manager.num_dims(),
+            });
+        }
 
         self.manager.register_vector(id, |index, chunk| {
             // Since this is a row-major format, the n-th vector
