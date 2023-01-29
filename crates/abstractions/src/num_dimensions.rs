@@ -112,6 +112,20 @@ impl Mul<NumDimensions> for usize {
     }
 }
 
+impl PartialEq<usize> for NumDimensions {
+    #[inline(always)]
+    fn eq(&self, other: &usize) -> bool {
+        self.0.eq(other)
+    }
+}
+
+impl PartialEq<NumDimensions> for usize {
+    #[inline(always)]
+    fn eq(&self, other: &NumDimensions) -> bool {
+        other.eq(self)
+    }
+}
+
 impl Display for NumDimensions {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)

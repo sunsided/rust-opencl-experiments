@@ -104,6 +104,20 @@ impl Mul<NumVectors> for usize {
     }
 }
 
+impl PartialEq<usize> for NumVectors {
+    #[inline(always)]
+    fn eq(&self, other: &usize) -> bool {
+        self.0.eq(other)
+    }
+}
+
+impl PartialEq<NumVectors> for usize {
+    #[inline(always)]
+    fn eq(&self, other: &NumVectors) -> bool {
+        other.eq(self)
+    }
+}
+
 impl Display for NumVectors {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)

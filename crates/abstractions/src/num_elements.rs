@@ -129,6 +129,20 @@ impl Display for NumElements {
     }
 }
 
+impl PartialEq<usize> for NumElements {
+    #[inline(always)]
+    fn eq(&self, other: &usize) -> bool {
+        self.0.eq(other)
+    }
+}
+
+impl PartialEq<NumElements> for usize {
+    #[inline(always)]
+    fn eq(&self, other: &NumElements) -> bool {
+        other.eq(self)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
