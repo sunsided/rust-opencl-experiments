@@ -8,9 +8,13 @@ use std::borrow::{Borrow, BorrowMut};
 /// A memory chunk whose size is specified at runtime.
 #[derive(Debug)]
 pub struct AnySizeMemoryChunk {
+    /// The number of vectors manageable by this chunk.
     num_vecs: usize,
+    /// The artificially limited number of vectors.
     virt_num_vecs: usize,
+    /// The number of dimensions for each vector.
     num_dims: usize,
+    /// The underlying memory allocation.
     data: Memory,
 }
 
@@ -48,6 +52,20 @@ impl AnySizeMemoryChunk {
         }
     }
 
+    /// Artificially limits this chunk to the specified number of vectors assuming
+    /// a row-major layout of memory.
+    ///
+    /// ## Warning
+    /// Be careful when applying this operation to column-major chunks as obtained
+    /// by the [`AnySizeMemoryChunk::as_transposed`] function. The changed layout
+    /// may result in cutting off vectors.
+    ///
+    /// ## Arguments
+    /// * `num_vecs` - The new maximum number of vectors to use.
+    ///
+    /// ## Notes
+    /// This acts as a view into a smaller set of vectors to the outside.
+    /// It does not, however, allocate or deallocate any memory.
     pub fn use_num_vecs(&mut self, num_vecs: NumVectors) {
         self.virt_num_vecs = match *num_vecs {
             0 => self.num_vecs,
@@ -55,7 +73,9 @@ impl AnySizeMemoryChunk {
         }
     }
 
-    pub fn get_vec(&self, idx: usize) -> &[f32] {
+    /// Gets the vector at the specified index in the chunk
+    /// assuming a row-major layout of the chunk.
+    pub fn get_row_major_vec(&self, idx: usize) -> &[f32] {
         let start = idx * self.num_dims;
         let end = (idx + 1) * self.num_dims;
         debug_assert!(idx < self.data.len());
@@ -63,26 +83,58 @@ impl AnySizeMemoryChunk {
         &data[start..end]
     }
 
+    /// Gets the total number of elements according to any
+    /// limits set by [`AnySizeMemoryChunk::use_num_vecs`].
     pub fn len(&self) -> usize {
         self.num_dims * self.virt_num_vecs
     }
 
+    /// Returns whether this chunk has zero length.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
+    /// Returns the number of vectors managed by this chunk,
+    /// taking into account any limits set by [`AnySizeMemoryChunk::use_num_vecs`].
     pub fn num_vecs(&self) -> NumVectors {
         NumVectors::from(self.virt_num_vecs)
     }
 
+    /// Returns the dimensionality of the vectors stored in this chunk.
     pub fn num_dims(&self) -> NumDimensions {
         NumDimensions::from(self.num_dims)
     }
 
-    pub fn as_transposed(&self) -> Vec<f32> {
+    /// Returns a vector of transposed values.
+    pub fn as_transposed_vec(&self) -> Vec<f32> {
         let mut vec = Vec::from(self.as_ref());
         transpose::transpose(self.as_ref(), &mut vec, self.num_dims, self.virt_num_vecs);
         vec
+    }
+
+    /// Allocates a new chunk of the same dimensions and fills it with a
+    /// transposed view of the this instance's contents.
+    ///
+    /// In practice, this flips the chunk from row-major to column-major
+    /// ordering and vice versa.
+    pub fn as_transposed(&self, access_hint: AccessHint) -> AnySizeMemoryChunk {
+        let mut transposed =
+            AnySizeMemoryChunk::new(self.num_vecs.into(), self.num_dims.into(), access_hint);
+        let src: &[f32] = self.data.as_ref();
+        let dst: &mut [f32] = transposed.data.as_mut();
+        transpose::transpose(src, dst, self.num_dims, self.num_vecs);
+        debug_assert_eq!(
+            src[0], dst[0],
+            "The first element is the pivot and should not change under transposition"
+        );
+        debug_assert_eq!(
+            src[1], dst[self.num_vecs],
+            "The first row contains of the first elements of all vectors"
+        );
+
+        // Artificial limits don't work with odd numbers of vectors.
+        // transposed.use_num_vecs(self.virt_num_vecs.into());
+        transposed
     }
 
     pub fn double(&mut self) {

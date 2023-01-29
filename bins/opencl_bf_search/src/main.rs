@@ -9,7 +9,7 @@ use crate::opencl::{
 use dot_products::reference_parallel::ReferenceDotProductParallel;
 use dot_products::DotProduct;
 use memchunk::chunks::{any_size_memory_chunk::AnySizeMemoryChunk, AccessHint};
-use ocl::{Buffer, Context, Kernel, MemFlags, Queue};
+use ocl::{Buffer, Context, Event, EventList, Kernel, MemFlags, Queue};
 use std::path::PathBuf;
 use std::time::Instant;
 use vecdb::VecDb;
@@ -23,6 +23,8 @@ async fn main() {
         std::process::exit(0);
     }
 
+    let double = matches.get_flag("double-vectors");
+
     let db_file = matches
         .get_one("vector-db")
         .expect("input argument missing");
@@ -35,13 +37,16 @@ async fn main() {
     let opencl_selection = get_opencl_selection(&matches);
 
     let mut chunk = load_vectors(db_file, num_vecs).await;
-    let first_vec = Vec::from(chunk.get_vec(0));
+    let first_vec = Vec::from(chunk.get_row_major_vec(0));
 
-    chunk.double();
-
-    // HACK: Ensure number of vectors is multiple of 32.
-    chunk.use_num_vecs((chunk.num_vecs().get() & !(32 - 1)).into());
-    println!("Using {} vectors.", chunk.num_vecs());
+    if double {
+        println!(
+            "Doubling the amount of vectors from {} to {} ...",
+            chunk.num_vecs(),
+            2 * chunk.num_vecs()
+        );
+        chunk.double();
+    }
 
     let reference_algo = ReferenceDotProductParallel::default();
     let mut reference = vec![0.0; chunk.num_vecs().get()];
@@ -100,7 +105,7 @@ async fn main() {
 
     // Write matrix data to the device using matrix_queue.
     let matrix_buffer = Buffer::<f32>::builder()
-        .queue(matrix_queue.clone())
+        .queue(matrix_queue)
         .flags(MemFlags::new().read_only().host_write_only())
         .len((chunk.num_vecs() * chunk.num_dims()).get())
         .build()
@@ -108,7 +113,7 @@ async fn main() {
 
     // Write vector data to the device using vector_queue.
     let vector_buffer = Buffer::<f32>::builder()
-        .queue(vector_queue.clone())
+        .queue(vector_queue)
         .flags(MemFlags::new().read_only().host_write_only())
         .len(chunk.num_dims().get())
         .build()
@@ -129,7 +134,7 @@ async fn main() {
     let dot_product_kernel = Kernel::builder()
         .program(&dot_product)
         .name("dot_product")
-        .queue(result_queue.clone())
+        .queue(result_queue)
         .global_work_size([chunk.num_vecs().get(), P])
         .local_work_size([X, P])
         .arg(&matrix_buffer)
@@ -142,7 +147,8 @@ async fn main() {
         .unwrap();
 
     println!("Transposing matrix ...");
-    let transposed = chunk.as_transposed();
+    let transposed = chunk.as_transposed(AccessHint::Sequential);
+    // let transposed = chunk.as_transposed_vec();
 
     println!("Processing using OpenCL ...");
     let start = Instant::now();
@@ -158,30 +164,58 @@ async fn main() {
         mem_map.unmap().enq().unwrap();
     }*/
 
-    matrix_buffer.cmd().write(&transposed).enq().unwrap();
-    vector_buffer.cmd().write(&first_vec).enq().unwrap();
+    let mut query_write_event = Event::empty();
+    let mut data_write_event = Event::empty();
 
-    // Flush the matrix and vector queues to make sure that the write
-    // operations have been sent to the device
-    matrix_queue.flush().unwrap();
-    vector_queue.flush().unwrap();
+    matrix_buffer
+        .cmd()
+        .enew(&mut data_write_event)
+        .write(transposed.as_ref())
+        .enq()
+        .unwrap();
+    vector_buffer
+        .cmd()
+        .enew(&mut query_write_event)
+        .write(&first_vec)
+        .enq()
+        .unwrap();
+
+    // Using event list to ensure the data was written before running the kernel.
+    let event_list = EventList::from([query_write_event, data_write_event]);
 
     // Execute the dot product kernel.
     let start_kernel = Instant::now();
-    unsafe { dot_product_kernel.cmd().enq().unwrap() };
+
+    let mut kernel_write_event = Event::empty();
+    unsafe {
+        dot_product_kernel
+            .cmd()
+            .ewait(&event_list)
+            .enew(&mut kernel_write_event)
+            .enq()
+            .unwrap()
+    };
 
     let mut results = vec![f32::NAN; chunk.num_vecs().get()];
-    result_buffer.cmd().read(&mut results).enq().unwrap();
+
+    let mut results_read_event = Event::empty();
+    result_buffer
+        .cmd()
+        .enew(&mut results_read_event)
+        .ewait(&kernel_write_event)
+        .read(&mut results)
+        .enq()
+        .unwrap();
 
     // Flush result_queue to make sure that the read operation has been sent to the device.
-    result_queue.flush().unwrap();
+    results_read_event.wait_for().unwrap();
 
     // TODO: Write next matrix ...
     // TODO: Write next vector ...
 
     // Just to ensure we have everything set here in the single-matrix example, we now
     // block on the result queue to make sure that the read operation has completed
-    result_queue.finish().unwrap();
+    // result_queue.finish().unwrap();
 
     let duration_ocl = (Instant::now() - start).as_secs_f32();
     let duration_ocl_kernel = (Instant::now() - start_kernel).as_secs_f32();
@@ -208,6 +242,16 @@ async fn load_vectors(db_file: &PathBuf, sample_size: usize) -> AnySizeMemoryChu
 
     let num_vecs = *db.num_vectors;
     let num_dims = *db.num_dimensions;
+
+    // HACK: Ensure number of vectors is multiple of 32.
+    let num_vecs = num_vecs & !(32 - 1);
+    if num_vecs != db.num_vectors.get() {
+        println!(
+            "Ensuring multiples of 32 - using {} vectors instead of {}.",
+            num_vecs,
+            db.num_vectors.get()
+        );
+    }
 
     let sample_size = (if sample_size > 0 {
         num_vecs.min(sample_size)

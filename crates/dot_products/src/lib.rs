@@ -77,7 +77,7 @@ pub mod test_utils {
 
         let algo = D::default();
         algo.dot_product(
-            chunk.get_vec(index_id),
+            chunk.get_row_major_vec(index_id),
             chunk.as_ref(),
             chunk.num_dims(),
             chunk.num_vecs(),

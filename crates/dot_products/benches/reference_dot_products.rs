@@ -54,7 +54,7 @@ fn run_bench_group<T: DotProduct + Default>(
     sizes: &[usize],
     chunk: &mut AnySizeMemoryChunk,
 ) {
-    let first_vec = Vec::from(chunk.get_vec(0));
+    let first_vec = Vec::from(chunk.get_row_major_vec(0));
 
     let mut group = c.benchmark_group(group_name);
     for &size in sizes.iter() {

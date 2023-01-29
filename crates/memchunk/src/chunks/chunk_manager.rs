@@ -1,3 +1,5 @@
+//! Basic memory chunk management functionality.
+
 use crate::chunks::chunk_index::ChunkIndex;
 use crate::chunks::chunk_vector::ChunkVector;
 use crate::chunks::fixed_size_memory_chunk::FixedSizeMemoryChunk;
@@ -8,6 +10,7 @@ use crate::InsertVectorError;
 use abstractions::{LocalId, NumDimensions, NumVectors};
 use std::ops::Deref;
 
+/// Shared functionality of memory chunk management.
 pub trait ChunkManager {
     /// Creates a new chunk manager.
     ///

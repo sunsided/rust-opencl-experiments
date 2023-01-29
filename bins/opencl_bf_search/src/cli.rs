@@ -60,6 +60,13 @@ pub fn match_cli_arguments() -> ArgMatches {
                 .allow_negative_numbers(false)
                 .value_parser(num_vecs)
                 .help_heading("Vector Database"),
+        )
+        .arg(
+            Arg::new("double-vectors")
+                .long("double")
+                .help("Doubles the amount of vectors")
+                .action(ArgAction::SetTrue)
+                .help_heading("Vector Database"),
         );
 
     command.get_matches()

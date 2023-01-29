@@ -1,3 +1,5 @@
+//! Tracking of vector assignments to chunks.
+
 use crate::chunks::chunk_index::ChunkIndex;
 use abstractions::{LocalId, NumVectors};
 use std::ops::{Index, IndexMut};
