@@ -4,6 +4,7 @@
 #![deny(clippy::missing_docs_in_private_items)]
 
 use crate::{NumDimensions, NumVectors};
+use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 use std::num::{NonZeroU32, NonZeroUsize};
 use std::ops::{Deref, Mul, Range};
@@ -26,6 +27,12 @@ impl NumElements {
     #[inline(always)]
     pub const fn get(self) -> usize {
         self.0
+    }
+}
+
+impl Display for NumElements {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
@@ -123,12 +130,6 @@ impl Mul<NumDimensions> for NumVectors {
     }
 }
 
-impl Display for NumElements {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
 impl PartialEq<usize> for NumElements {
     #[inline(always)]
     fn eq(&self, other: &usize) -> bool {
@@ -140,6 +141,20 @@ impl PartialEq<NumElements> for usize {
     #[inline(always)]
     fn eq(&self, other: &NumElements) -> bool {
         other.eq(self)
+    }
+}
+
+impl PartialOrd<usize> for NumElements {
+    #[inline(always)]
+    fn partial_cmp(&self, other: &usize) -> Option<Ordering> {
+        self.0.partial_cmp(other)
+    }
+}
+
+impl PartialOrd<NumElements> for usize {
+    #[inline(always)]
+    fn partial_cmp(&self, other: &NumElements) -> Option<Ordering> {
+        self.partial_cmp(&other.0)
     }
 }
 
@@ -159,5 +174,13 @@ mod tests {
             NumVectors::from(10u32) * NumDimensions::from(42u32),
             NumElements::from(420u32)
         )
+    }
+
+    #[test]
+    fn partial_eq_usize_works() {
+        assert!(0 < NumElements::from(42u32));
+        assert!(NumElements::from(42u32) > 0);
+        assert!(43 > NumElements::from(42u32));
+        assert!(NumElements::from(42u32) < 43);
     }
 }

@@ -3,6 +3,7 @@
 #![deny(missing_docs)]
 #![deny(clippy::missing_docs_in_private_items)]
 
+use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 use std::num::{NonZeroU32, NonZeroUsize};
 use std::ops::{Deref, Mul, Range};
@@ -30,6 +31,12 @@ impl NumDimensions {
     #[inline(always)]
     pub const fn get(self) -> usize {
         self.0
+    }
+}
+
+impl Display for NumDimensions {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
@@ -126,8 +133,43 @@ impl PartialEq<NumDimensions> for usize {
     }
 }
 
-impl Display for NumDimensions {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
+impl PartialOrd<usize> for NumDimensions {
+    #[inline(always)]
+    fn partial_cmp(&self, other: &usize) -> Option<Ordering> {
+        self.0.partial_cmp(other)
+    }
+}
+
+impl PartialOrd<NumDimensions> for usize {
+    #[inline(always)]
+    fn partial_cmp(&self, other: &NumDimensions) -> Option<Ordering> {
+        self.partial_cmp(&other.0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mul_works() {
+        assert_eq!(
+            NumDimensions::from(10u32) * 42usize,
+            NumDimensions::from(420u32)
+        );
+
+        // This multiplication is commutative.
+        assert_eq!(
+            10usize * NumDimensions::from(42u32),
+            NumDimensions::from(420u32)
+        );
+    }
+
+    #[test]
+    fn partial_eq_usize_works() {
+        assert!(0 < NumDimensions::from(42u32));
+        assert!(NumDimensions::from(42u32) > 0);
+        assert!(43 > NumDimensions::from(42u32));
+        assert!(NumDimensions::from(42u32) < 43);
     }
 }
