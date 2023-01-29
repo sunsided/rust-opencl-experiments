@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [[bench]]
-name = "reference"
+name = "reference_dot_products"
 harness = false
 
 [dependencies]
