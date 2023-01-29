@@ -1,7 +1,6 @@
 mod cli;
 mod opencl;
 mod vec_traits;
-mod vecgen;
 
 use crate::cli::match_cli_arguments;
 use crate::opencl::{

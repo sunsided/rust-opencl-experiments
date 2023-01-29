@@ -6,7 +6,10 @@ version = 3
 name = "abstractions"
 version = "0.1.0"
 dependencies = [
+ "approx",
  "paste",
+ "rand",
+ "rand_xoshiro",
 ]
 
 [[package]]
@@ -1215,8 +1218,6 @@ dependencies = [
  "memchunk",
  "ocl",
  "ocl-stream",
- "rand",
- "rand_xoshiro",
  "shellexpand",
  "tokio",
  "vecdb",

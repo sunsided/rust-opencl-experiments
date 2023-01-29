@@ -1,3 +1,4 @@
+use abstractions::{NumDimensions, NumVectors, Vecgen};
 use criterion::Criterion;
 use criterion::{criterion_group, criterion_main};
 use criterion::{BenchmarkId, Throughput};
@@ -8,12 +9,9 @@ use dot_products::reference_parallel::{
 use dot_products::DotProduct;
 use memchunk::chunks::{any_size_memory_chunk::AnySizeMemoryChunk, AccessHint};
 use std::hint::black_box;
-use std::path::PathBuf;
-use vecdb::VecDb;
 
 fn reference_dot_products(c: &mut Criterion) {
-    let rt = tokio::runtime::Runtime::new().unwrap();
-    let mut chunk = rt.block_on(async { load_vectors(131_072).await });
+    let mut chunk = generate_vectors(NumVectors::from(131_072u32), NumDimensions::from(384u32));
 
     let sizes = [1024usize, 2048, 131_072];
 
@@ -82,37 +80,13 @@ fn run_bench_group<T: DotProduct + Default>(
     group.finish();
 }
 
-async fn load_vectors(sample_size: usize) -> AnySizeMemoryChunk {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
-        .join("vectors.bin");
-    let mut db = VecDb::open_read(path).await.unwrap();
-
-    let num_vecs = *db.num_vectors;
-    let num_dims = *db.num_dimensions;
-
-    let sample_size = (if sample_size > 0 {
-        num_vecs.min(sample_size)
-    } else {
-        num_vecs
-    })
-    .into();
-
-    let mut chunk = AnySizeMemoryChunk::new(sample_size, db.num_dimensions, AccessHint::Sequential);
+fn generate_vectors(sample_size: NumVectors, num_dimensions: NumDimensions) -> AnySizeMemoryChunk {
+    let mut chunk = AnySizeMemoryChunk::new(sample_size, num_dimensions, AccessHint::Random);
     let data = chunk.as_mut();
 
-    println!("Loading {sample_size} elements from vector database ...");
-    let num_read = db
-        .read_n_vecs(sample_size, |v, vec| {
-            let start = v * num_dims;
-            let end = start + num_dims;
-            data[start..end].copy_from_slice(vec);
-            true
-        })
-        .await
-        .unwrap();
-    assert_eq!(num_read, *sample_size);
+    println!("Generating {sample_size} random vectors ...");
+    let mut vecgen = Vecgen::new_from_seed(0xdeadcafe);
+    vecgen.fill(data);
     chunk
 }
 

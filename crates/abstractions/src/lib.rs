@@ -3,9 +3,11 @@ mod local_id;
 mod num_dimensions;
 mod num_elements;
 mod num_vectors;
+mod vecgen;
 
 pub use alignments::Alignment;
 pub use local_id::LocalId;
 pub use num_dimensions::NumDimensions;
 pub use num_elements::NumElements;
 pub use num_vectors::NumVectors;
+pub use vecgen::Vecgen;

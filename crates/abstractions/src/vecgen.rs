@@ -1,8 +1,10 @@
-#![allow(dead_code)]
+//! Random vector generation for testing.
 
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro128Plus;
 
+/// An `f32` vector generator based on the Xoshiro-128+ RNG
+/// to deterministically generate pseudo-random vectors based on a seed.
 #[derive(Debug)]
 pub struct Vecgen {
     rng: Xoshiro128Plus,
@@ -11,12 +13,17 @@ pub struct Vecgen {
 unsafe impl Send for Vecgen {}
 
 impl Vecgen {
+    /// Generates a new [`Vecgen`] instance seeded by system entropy.
     pub fn new_from_entropy() -> Self {
         Self {
             rng: Xoshiro128Plus::from_entropy(),
         }
     }
 
+    /// Generates a new [`Vecgen`] instance seeded by the specified value.
+    ///
+    /// ## Arguments
+    /// * `seed` - The seed value to use.
     pub fn new_from_seed(seed: u64) -> Self {
         Self {
             rng: Xoshiro128Plus::seed_from_u64(seed),
