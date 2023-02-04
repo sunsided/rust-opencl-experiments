@@ -8,4 +8,4 @@ rust-version = "1.66"
 abstractions = { path = "../../crates/abstractions" }
 fmmap = { version = "0.3.2", features = ["tokio", "tokio-async"] }
 futures = "0.3.25"
-tokio = { version = "1.24.1", features = ["full"] }
+tokio = { version = "1.24.2", features = ["full"] }
